@@ -32,12 +32,13 @@
         .checklist-item { 
             position: sticky; left: 0; z-index: 50; 
             background: #fff !important; 
-            width: 200px !important; /* 140px에서 200px로 확장 */
+            width: 200px !important; 
+            min-width: 200px; /* 너비 고정 */
             text-align: left; padding: 0 10px;
             border-right: 2px solid #f0f2f5;
-            display: flex; /* 가로 정렬 */
-            align-items: center;
-            white-space: nowrap; /* 줄바꿈 방지 */
+            white-space: nowrap;
+            display: table-cell; /* 테이블 속성 유지 */
+            vertical-align: middle;
         }
 
         /* 3. 모바일 가독성을 위한 날짜 및 셀 크기 조정 */
@@ -53,10 +54,19 @@
         .circle.bad { background-color: #ff3b30; border-color: #ff3b30; }
 
         .legend { display: flex; justify-content: center; gap: 15px; padding: 15px; font-size: 12px; background: #fff; margin-top: 10px; }
-        input { 
-            flex: 1; /* 텍스트 칸이 남은 공간을 다 채우도록 */
-            font-size: 16px !important; border: none; background: transparent; outline: none; 
+        /* 새로 추가: 입력창과 버튼을 가로로 정렬해줄 도우미 */
+        .item-wrapper {
+            display: flex;
+            align-items: center;
+            width: 100%;
         }
+
+        input { 
+            flex: 1; min-width: 0; /* 글자가 길어져도 밀리지 않게 함 */
+            font-size: 16px !important; border: none; background: transparent; outline: none; 
+            -webkit-appearance: none; /* 아이폰 기본 스타일 제거 */
+        }
+
         /* --- 여기서부터 아래 내용을 붙여넣으세요 --- */
         @media (prefers-color-scheme: dark) {
             body { background-color: #1c1c1e; color: #f2f2f7; }
@@ -187,8 +197,14 @@ for (let i = 1; i <= DAYS; i++) {
             input.value = item.name;
             input.onchange = (e) => { item.name = e.target.value; saveToDB(); };
 
-            nameTd.appendChild(input);
-            nameTd.appendChild(delBtn);
+           // wrapper라는 바구니에 담아서 td에 넣습니다.
+            const wrapper = document.createElement('div');
+            wrapper.className = 'item-wrapper';
+
+            wrapper.appendChild(input);
+            wrapper.appendChild(delBtn);
+
+            nameTd.appendChild(wrapper);
             tr.appendChild(nameTd);
 
             for (let d = 0; d < DAYS; d++) {
