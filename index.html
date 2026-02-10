@@ -31,9 +31,13 @@
         /* 2. 첫 번째 열(항목 이름) 왼쪽 고정 */
         .checklist-item { 
             position: sticky; left: 0; z-index: 50; 
-            background: #fff !important; width: 140px !important; 
-            text-align: left; padding-left: 10px;
+            background: #fff !important; 
+            width: 200px !important; /* 140px에서 200px로 확장 */
+            text-align: left; padding: 0 10px;
             border-right: 2px solid #f0f2f5;
+            display: flex; /* 가로 정렬 */
+            align-items: center;
+            white-space: nowrap; /* 줄바꿈 방지 */
         }
 
         /* 3. 모바일 가독성을 위한 날짜 및 셀 크기 조정 */
@@ -49,7 +53,10 @@
         .circle.bad { background-color: #ff3b30; border-color: #ff3b30; }
 
         .legend { display: flex; justify-content: center; gap: 15px; padding: 15px; font-size: 12px; background: #fff; margin-top: 10px; }
-        input { font-size: 16px !important; width: 80%; border: none; background: transparent; }
+        input { 
+            flex: 1; /* 텍스트 칸이 남은 공간을 다 채우도록 */
+            font-size: 16px !important; border: none; background: transparent; outline: none; 
+        }
         /* --- 여기서부터 아래 내용을 붙여넣으세요 --- */
         @media (prefers-color-scheme: dark) {
             body { background-color: #1c1c1e; color: #f2f2f7; }
@@ -173,15 +180,15 @@ for (let i = 1; i <= DAYS; i++) {
             nameTd.className = 'checklist-item';
             
             const delBtn = document.createElement('button');
-            delBtn.innerHTML = '⊖'; delBtn.style = "color:#ff3b30; border:none; background:none; font-size:18px; padding:0 5px 0 0;";
+            delBtn.innerHTML = '⊖'; delBtn.style = "color:#ff3b30; border:none; background:none; font-size:18px; padding:0 0 0 5px; flex-shrink:0;";
             delBtn.onclick = () => { if(confirm('삭제할까요?')) { monthData.items.splice(rIndex, 1); saveToDB(); } };
             
             const input = document.createElement('input');
             input.value = item.name;
             input.onchange = (e) => { item.name = e.target.value; saveToDB(); };
 
-            nameTd.appendChild(delBtn);
             nameTd.appendChild(input);
+            nameTd.appendChild(delBtn);
             tr.appendChild(nameTd);
 
             for (let d = 0; d < DAYS; d++) {
