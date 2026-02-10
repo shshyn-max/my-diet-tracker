@@ -147,11 +147,22 @@ function syncData() {
         const trackerBody = document.getElementById('trackerBody');
         
         while (dateHeader.children.length > 1) dateHeader.removeChild(dateHeader.lastChild);
-        for (let i = 1; i <= DAYS; i++) {
-            const th = document.createElement('th');
-            th.className = 'date-th'; th.innerText = i;
-            dateHeader.appendChild(th);
-        }
+        const todayDate = new Date().getDate(); // 오늘이 몇 일인지 가져옵니다.
+
+for (let i = 1; i <= DAYS; i++) {
+    const th = document.createElement('th');
+    th.className = 'date-th';
+    th.innerText = i;
+    
+    // 만약 i가 오늘 날짜와 같다면 색상을 파랗게 강조!
+    if (i === todayDate) {
+        th.style.color = "#007aff"; 
+        th.style.fontWeight = "bold";
+        th.style.textDecoration = "underline";
+    }
+    
+    dateHeader.appendChild(th);
+}
 
         trackerBody.innerHTML = '';
         const monthData = allMonthsData[currentMonth] || { items: [] };
