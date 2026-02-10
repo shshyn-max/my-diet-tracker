@@ -2,86 +2,81 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>동기화 다이어트 트래커</title>
+    <title>다이어트 트래커</title>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     
     <style>
-        /* 2. 아이폰 터치 하이라이트 및 기본 폰트 최적화 */
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif; 
-            background-color: #f0f2f5; padding: 10px; margin: 0; color: #333;
+            background-color: #f0f2f5; margin: 0; padding: 0;
             -webkit-tap-highlight-color: transparent; 
         }
-        .container { 
-            background: white; padding: 20px 15px; border-radius: 16px; 
-            box-shadow: 0 8px 30px rgba(0,0,0,0.08); 
-            overflow-x: auto; 
-            -webkit-overflow-scrolling: touch; /* 아이폰에서 부드러운 스크롤 */
-        }
-        .header-area { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; min-width: 1000px; }
-        .left-controls { display: flex; align-items: center; gap: 15px; }
-        select { padding: 8px; border-radius: 8px; border: 1px solid #ddd; font-size: 16px; font-weight: bold; background: #fff; }
-        .btn-add { background: #007aff; color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; }
-        
-        /* 3. 테이블 구조 및 고정 열(Sticky) 최적화 */
-        table { border-collapse: collapse; width: 100%; min-width: 1250px; table-layout: fixed; }
-        th, td { padding: 10px 0; border-bottom: 1px solid #f1f3f5; text-align: center; }
-        .checklist-item { 
-            text-align: left; width: 180px !important; background: #fff; 
-            position: sticky; left: 0; z-index: 20; 
-            display: flex; align-items: center; padding-left: 5px;
-            border-right: 1px solid #f0f0f0;
-        }
-        /* 아이폰 인풋 폰트 크기 16px 미만일 시 자동 줌 발생 차단 */
-        .checklist-item input { border: 1px solid transparent; font-size: 16px; padding: 5px; width: 85%; outline: none; background: transparent; }
-        .btn-del { color: #ff3b30; border: none; background: none; cursor: pointer; font-size: 18px; margin-right: 3px; }
 
-        .date-th { font-size: 11px; color: #8e8e93; width: 34px; }
+        /* 1. 상단 헤더 고정: 스크롤해도 항상 보임 */
+        .sticky-header {
+            position: sticky; top: 0; z-index: 100;
+            background: #fff; padding: 15px;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
         
-        /* 4. 동그라미 터치 영역 확대 (UX 개선) */
-        .status-cell { width: 34px; height: 40px; vertical-align: middle; }
+        .container { padding: 10px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+        .btn-add { background: #007aff; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 14px; }
+        
+        table { border-collapse: collapse; min-width: 1200px; table-layout: fixed; }
+        
+        /* 2. 첫 번째 열(항목 이름) 왼쪽 고정 */
+        .checklist-item { 
+            position: sticky; left: 0; z-index: 50; 
+            background: #fff !important; width: 140px !important; 
+            text-align: left; padding-left: 10px;
+            border-right: 2px solid #f0f2f5;
+        }
+
+        /* 3. 모바일 가독성을 위한 날짜 및 셀 크기 조정 */
+        .date-th { font-size: 11px; color: #8e8e93; width: 32px; background: #f8f9fa; }
+        .status-cell { width: 32px; height: 45px; }
+        
         .circle { 
             width: 24px; height: 24px; border-radius: 50%; border: 2px solid #d1d1d6; 
-            margin: 0 auto; cursor: pointer; transition: transform 0.1s;
+            margin: 0 auto; transition: transform 0.1s;
         }
-        .circle.none { background-color: #fff; }
         .circle.good { background-color: #34c759; border-color: #34c759; }
         .circle.normal { background-color: #007aff; border-color: #007aff; }
         .circle.bad { background-color: #ff3b30; border-color: #ff3b30; }
 
-        .legend { display: flex; justify-content: center; gap: 20px; margin-bottom: 20px; font-size: 13px; }
-        .legend-item { display: flex; align-items: center; gap: 5px; }
-        .dot { width: 10px; height: 10px; border-radius: 50%; }
+        .legend { display: flex; justify-content: center; gap: 15px; padding: 15px; font-size: 12px; background: #fff; margin-top: 10px; }
+        input { font-size: 16px !important; width: 80%; border: none; background: transparent; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="header-area">
-        <div class="left-controls">
-            <h2 style="font-size: 18px; margin:0;">🗓 다이어트 트래커</h2>
-            <select id="monthSelect" onchange="changeMonth()"></select>
-        </div>
-        <button class="btn-add" onclick="addRow()">+ 추가</button>
+<div class="sticky-header">
+    <div style="display:flex; align-items:center; gap:10px;">
+        <h2 style="font-size: 18px; margin:0;">🗓 기록장</h2>
+        <select id="monthSelect" onchange="changeMonth()" style="font-size:16px; font-weight:bold; border-radius:5px; border:1px solid #ddd; padding:4px;"></select>
     </div>
-    
-    <div class="legend">
-        <div class="legend-item"><div class="dot" style="background:#34c759"></div>잘함</div>
-        <div class="legend-item"><div class="dot" style="background:#007aff"></div>보통</div>
-        <div class="legend-item"><div class="dot" style="background:#ff3b30"></div>못함</div>
-    </div>
+    <button class="btn-add" onclick="addRow()">+ 추가</button>
+</div>
 
+<div class="container">
     <table>
-        <thead><tr id="dateHeader"><th style="width: 180px; text-align: left; padding-left: 10px; background:#f8f9fa;">습관 항목</th></tr></thead>
+        <thead><tr id="dateHeader"><th class="checklist-item">습관 항목</th></tr></thead>
         <tbody id="trackerBody"></tbody>
     </table>
 </div>
 
+<div class="legend">
+    <div style="display:flex; align-items:center; gap:4px;"><span style="width:10px; height:10px; border-radius:50%; background:#34c759"></span>잘함</div>
+    <div style="display:flex; align-items:center; gap:4px;"><span style="width:10px; height:10px; border-radius:50%; background:#007aff"></span>보통</div>
+    <div style="display:flex; align-items:center; gap:4px;"><span style="width:10px; height:10px; border-radius:50%; background:#ff3b30"></span>못함</div>
+</div>
+
 <script>
-    // 상희 님의 Firebase 설정 유지
+    // 상희 님의 기존 Firebase 설정값을 유지하세요.
     const firebaseConfig = {
         apiKey: "AIzaSyDzsgX2NvbQLlYRu8eZr7BngxcTzaXD3Mw",
         authDomain: "ymy-diet-sync.firebaseapp.com",
@@ -93,12 +88,6 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
-    
-    // 5. 오프라인 지속성 활성화 (아이폰 동기화 안정성 강화)
-    firebase.firestore().enablePersistence().catch((err) => {
-        console.warn("Persistence failed", err.code);
-    });
-
     const DAYS = 31;
     let currentMonth = String(new Date().getMonth() + 1);
     let allMonthsData = {};
@@ -112,8 +101,6 @@
                 allMonthsData[currentMonth] = { items: [{ name: "물 2L 마시기", history: Array(31).fill('none') }] };
                 saveToDB();
             }
-        }, (error) => {
-            console.error("Firebase sync error:", error);
         });
     }
 
@@ -150,20 +137,12 @@
             nameTd.className = 'checklist-item';
             
             const delBtn = document.createElement('button');
-            delBtn.className = 'btn-del'; delBtn.innerHTML = '⊖';
-            delBtn.onclick = () => {
-                if(confirm('삭제할까요?')) {
-                    monthData.items.splice(rIndex, 1);
-                    saveToDB();
-                }
-            };
+            delBtn.innerHTML = '⊖'; delBtn.style = "color:#ff3b30; border:none; background:none; font-size:18px; padding:0 5px 0 0;";
+            delBtn.onclick = () => { if(confirm('삭제할까요?')) { monthData.items.splice(rIndex, 1); saveToDB(); } };
             
             const input = document.createElement('input');
             input.value = item.name;
-            input.onchange = (e) => {
-                item.name = e.target.value;
-                saveToDB();
-            };
+            input.onchange = (e) => { item.name = e.target.value; saveToDB(); };
 
             nameTd.appendChild(delBtn);
             nameTd.appendChild(input);
@@ -174,13 +153,10 @@
                 td.className = 'status-cell';
                 const circle = document.createElement('div');
                 circle.className = `circle ${item.history[d]}`;
-                // 6. 터치 반응성 개선: 낙관적 업데이트 적용
-                circle.onclick = (e) => {
-                    e.preventDefault();
+                circle.onclick = () => {
                     const states = ['none', 'good', 'normal', 'bad'];
-                    const next = states[(states.indexOf(item.history[d]) + 1) % 4];
-                    item.history[d] = next;
-                    circle.className = `circle ${next}`; // 즉시 반영
+                    item.history[d] = states[(states.indexOf(item.history[d]) + 1) % 4];
+                    circle.className = `circle ${item.history[d]}`;
                     saveToDB();
                 };
                 td.appendChild(circle);
