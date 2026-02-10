@@ -92,15 +92,25 @@
     let currentMonth = String(new Date().getMonth() + 1);
     let allMonthsData = {};
 
-    function syncData() {
+function syncData() {
         db.collection("diet_tracker").doc("sanghee").onSnapshot((doc) => {
             if (doc.exists) {
-                allMonthsData = doc.data();
+                const data = doc.data();
+                // 서버의 전체 데이터를 불러오되, 현재 달 데이터가 없으면 빈 배열로 초기화
+                allMonthsData = data;
+                
+                // 숫자로 된 필드(2)와 문자열("2") 모두 대응하기 위해 현재 달 데이터 확인
+                if (!allMonthsData[currentMonth]) {
+                    allMonthsData[currentMonth] = { items: [] };
+                }
                 render();
             } else {
+                // 서버에 데이터가 아예 없는 경우만 초기 데이터 생성
                 allMonthsData[currentMonth] = { items: [{ name: "물 2L 마시기", history: Array(31).fill('none') }] };
                 saveToDB();
             }
+        }, (error) => {
+            console.error("데이터 불러오기 에러:", error);
         });
     }
 
