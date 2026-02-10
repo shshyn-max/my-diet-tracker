@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>동기화 다이어트 트래커</title>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
+    <style>
+        /* [기존 디자인 스타일 유지] */
+        body { font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif; background-color: #f0f2f5; padding: 20px; margin: 0; color: #333; }
+        .container { background: white; padding: 30px; border-radius: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); overflow-x: auto; }
+        .header-area { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; min-width: 1200px; }
+        .left-controls { display: flex; align-items: center; gap: 20px; }
+        select { padding: 8px 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 16px; font-weight: bold; }
+        .btn-add { background: #007aff; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        table { border-collapse: collapse; width: 100%; min-width: 1300px; table-layout: fixed; }
+        th, td { padding: 12px 0; border-bottom: 1px solid #f1f3f5; text-align: center; }
+        .checklist-item { text-align: left; width: 220px; background: #fff; position: sticky; left: 0; z-index: 10; display: flex; align-items: center; padding-left: 10px; }
+        .checklist-item input { border: 1px solid transparent; font-size: 15px; padding: 8px; width: 80%; border-radius: 6px; outline: none; background: transparent; }
+        .checklist-item input:focus { background: #f8f9fa; border-color: #ddd; }
+        .btn-del { color: #ff3b30; border: none; background: none; cursor: pointer; font-size: 20px; opacity: 0.3; }
+        tr:hover .btn-del { opacity: 1; }
+        .date-th { font-size: 12px; color: #8e8e93; width: 35px; }
+        .circle { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #d1d1d6; margin: 0 auto; cursor: pointer; transition: transform 0.1s; }
+        .circle.none { background-color: #fff; }
+        .circle.good { background-color: #34c759; border-color: #34c759; }
+        .circle.normal { background-color: #007aff; border-color: #007aff; }
+        .circle.bad { background-color: #ff3b30; border-color: #ff3b30; }
+        .legend { display: flex; justify-content: center; gap: 25px; margin-bottom: 25px; font-size: 14px; }
+        .legend-item { display: flex; align-items: center; gap: 8px; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-area">
+        <div class="left-controls">
+            <h2>🗓 동기화 다이어트 기록장</h2>
+            <select id="monthSelect" onchange="changeMonth()"></select>
+        </div>
+        <button class="btn-add" onclick="addRow()">+ 새 항목 추가</button>
+    </div>
+    
+    <div class="legend">
+        <div class="legend-item"><div class="dot" style="background:#34c759"></div>잘함</div>
+        <div class="legend-item"><div class="dot" style="background:#007aff"></div>보통</div>
+        <div class="legend-item"><div class="dot" style="background:#ff3b30"></div>못함</div>
+    </div>
+
+    <table>
+        <thead><tr id="dateHeader"><th style="width: 220px; text-align: left; padding-left: 20px;">습관 항목</th></tr></thead>
+        <tbody id="trackerBody"></tbody>
+    </table>
+</div>
+
+<script>
+    // 1. Firebase 콘솔에서 복사한 본인의 설정값을 여기에 넣으세요!
+    const firebaseConfig = {
+        apiKey: "AIzaSyDzsgX2NvbQLlYRu8eZr7BngxcTzaXD3Mw",
+        authDomain: "ymy-diet-sync.firebaseapp.com",
+        projectId: "my-diet-sync",
+        storageBucket: "my-diet-sync.firebasestorage.app",
+        messagingSenderId: "1021774151274",
+        appId: "1:1021774151274:web:f03efd0240a3899a8d1413"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const DAYS = 31;
+    let currentMonth = String(new Date().getMonth() + 1);
+    let allMonthsData = {};
+
+    // DB 실시간 감시 기능 (연결되면 자동 렌더링)
+    function syncData() {
+        // 'user_data'라는 컬렉션의 'sanghee'라는 문서 하나에 저장하는 예시입니다.
+        db.collection("diet_tracker").doc("sanghee").onSnapshot((doc) => {
+            if (doc.exists()) {
+                allMonthsData = doc.data();
+                render();
+            } else {
+                // 데이터가 전혀 없을 때 초기 세팅
+                allMonthsData[currentMonth] = { items: [{ name: "물 2L 마시기", history: Array(31).fill('none') }] };
+                saveToDB();
+            }
+        });
+    }
+
+    function saveToDB() {
+        db.collection("diet_tracker").doc("sanghee").set(allMonthsData);
+    }
+
+    function changeMonth() {
+        currentMonth = document.getElementById('monthSelect').value;
+        if (!allMonthsData[currentMonth]) {
+            allMonthsData[currentMonth] = { items: [{ name: "새 월 항목", history: Array(31).fill('none') }] };
+            saveToDB();
+        }
+        render();
+    }
+
+    function render() {
+        const dateHeader = document.getElementById('dateHeader');
+        const trackerBody = document.getElementById('trackerBody');
+        
+        while (dateHeader.children.length > 1) dateHeader.removeChild(dateHeader.lastChild);
+        for (let i = 1; i <= DAYS; i++) {
+            const th = document.createElement('th');
+            th.className = 'date-th'; th.innerText = i;
+            dateHeader.appendChild(th);
+        }
+
+        trackerBody.innerHTML = '';
+        const monthData = allMonthsData[currentMonth] || { items: [] };
+
+        monthData.items.forEach((item, rIndex) => {
+            const tr = document.createElement('tr');
+            const nameTd = document.createElement('td');
+            nameTd.className = 'checklist-item';
+            
+            const delBtn = document.createElement('button');
+            delBtn.className = 'btn-del'; delBtn.innerHTML = '⊖';
+            delBtn.onclick = () => {
+                if(confirm('삭제할까요?')) {
+                    monthData.items.splice(rIndex, 1);
+                    saveToDB();
+                }
+            };
+            
+            const input = document.createElement('input');
+            input.value = item.name;
+            input.onchange = (e) => {
+                item.name = e.target.value;
+                saveToDB();
+            };
+
+            nameTd.appendChild(delBtn);
+            nameTd.appendChild(input);
+            tr.appendChild(nameTd);
+
+            for (let d = 0; d < DAYS; d++) {
+                const td = document.createElement('td');
+                const circle = document.createElement('div');
+                circle.className = `circle ${item.history[d]}`;
+                circle.onclick = () => {
+                    const states = ['none', 'good', 'normal', 'bad'];
+                    item.history[d] = states[(states.indexOf(item.history[d]) + 1) % 4];
+                    saveToDB();
+                };
+                td.appendChild(circle);
+                tr.appendChild(td);
+            }
+            trackerBody.appendChild(tr);
+        });
+    }
+
+    function addRow() {
+        if (!allMonthsData[currentMonth]) allMonthsData[currentMonth] = { items: [] };
+        allMonthsData[currentMonth].items.push({ name: "새 항목", history: Array(31).fill('none') });
+        saveToDB();
+    }
+
+    function init() {
+        const select = document.getElementById('monthSelect');
+        for (let i = 1; i <= 12; i++) {
+            const opt = document.createElement('option');
+            opt.value = String(i); opt.innerText = i + '월';
+            if (i === parseInt(currentMonth)) opt.selected = true;
+            select.appendChild(opt);
+        }
+        syncData(); // 로컬 로드 대신 DB 싱크 시작
+    }
+
+    init();
+</script>
+</body>
+</html>
