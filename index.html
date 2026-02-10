@@ -50,6 +50,21 @@
 
         .legend { display: flex; justify-content: center; gap: 15px; padding: 15px; font-size: 12px; background: #fff; margin-top: 10px; }
         input { font-size: 16px !important; width: 80%; border: none; background: transparent; }
+        /* --- 여기서부터 아래 내용을 붙여넣으세요 --- */
+        @media (prefers-color-scheme: dark) {
+            body { background-color: #1c1c1e; color: #f2f2f7; }
+            .sticky-header { background: #2c2c2e; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+            .sticky-header h2 { color: #ffffff; }
+            .container { background: #1c1c1e; }
+            .checklist-item { background: #2c2c2e !important; border-right: 2px solid #3a3a3c; }
+            .checklist-item input { color: #ffffff; }
+            th.date-th { background-color: #3a3a3c; color: #aeaeb2; }
+            td { border-bottom: 1px solid #3a3a3c; }
+            .legend { background: #2c2c2e; color: #f2f2f7; }
+            select { background: #3a3a3c; color: #ffffff; border: 1px solid #48484a; }
+            .circle.none { background-color: #2c2c2e; border-color: #48484a; }
+        }
+        /* --- 여기까지 --- */
     </style>
 </head>
 <body>
