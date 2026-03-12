@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>프로 타바타 타이머 v6.2</title>
+    <title>프로 타바타 타이머 v6.3</title>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         :root { 
@@ -20,7 +20,7 @@
             display: flex; flex-direction: column; align-items: center; 
             min-height: 100vh; margin: 0; transition: background 0.5s ease;
             padding-bottom: env(safe-area-inset-bottom, 20px);
-            overflow-x: hidden; /* 가로 밀림 방지 */
+            overflow-x: hidden;
         }
 
         .main-layout {
@@ -39,7 +39,7 @@
             background: rgba(0, 0, 0, 0.75); padding: 18px; border-radius: 20px; 
             margin-bottom: 20px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; 
             border: var(--border-style);
-            align-items: end; /* 라벨과 입력창 높이 고정 */
+            align-items: end;
         }
         .settings label { font-size: 0.7rem; font-weight: bold; margin-bottom: 6px; display: block; color: #ccc; }
         
@@ -48,9 +48,7 @@
             height: 45px; padding: 0; border-radius: 10px; text-align: center; 
             font-size: 16px; font-weight: 900;
             margin: 0 auto; -webkit-appearance: none; -moz-appearance: textfield; 
-            line-height: normal; /* 아이폰 텍스트 수직 밀림 방지 */
-            outline: none;
-            box-sizing: border-box;
+            line-height: normal; outline: none; box-sizing: border-box;
         }
         .settings input::-webkit-outer-spin-button, .settings input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
@@ -178,9 +176,12 @@
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     function playBeep(f, d) { const o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.connect(g); g.connect(audioCtx.destination); o.frequency.value = f; o.start(); setTimeout(() => o.stop(), d); }
     
+    // 보강된 speak 함수
     function speak(t, callback) { 
+        window.speechSynthesis.cancel(); // 이전 음성 모두 취소
         const m = new SpeechSynthesisUtterance(t); 
         m.lang = 'ko-KR'; 
+        m.rate = 1.0; 
         if(callback) m.onend = callback;
         window.speechSynthesis.speak(m); 
     }
@@ -229,8 +230,12 @@
 
     async function startWorkout() {
         if (audioCtx.state === 'suspended') await audioCtx.resume();
+        // 음성 엔진을 깨우기 위해 빈 음성을 한 번 보냄
+        speak(""); 
+        
         toggleBtn.innerText = "⏸ PAUSE"; rightBtn.innerText = "■ STOP"; isPaused = false;
         settingsArea.style.opacity = '0.5'; settingsArea.style.pointerEvents = 'none';
+        
         if (mode === 'PREPARE' && currentRoundTotal === 1 && timeLeft === config.prepare) { 
             speak("준비하세요."); 
             setTimeout(() => { if(timerId && !isPaused) speak(getSpeechText()); }, config.prepare * 1000 - 1500); 
@@ -337,7 +342,6 @@
 
     toggleBtn.addEventListener('click', handleToggle);
     rightBtn.addEventListener('click', handleRightBtn);
-    // input 이벤트를 사용하여 숫자가 바뀔 때마다 즉시 반영
     document.querySelectorAll('input').forEach(i => i.addEventListener('input', updateInfo));
     window.onload = () => { updateInfo(); renderHistory(); renderPresets(); };
 </script>
