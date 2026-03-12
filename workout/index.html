@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>프로 타바타 타이머 v6.3</title>
+    <title>프로 타바타 타이머 v6.4</title>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         :root { 
@@ -176,13 +176,18 @@
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     function playBeep(f, d) { const o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.connect(g); g.connect(audioCtx.destination); o.frequency.value = f; o.start(); setTimeout(() => o.stop(), d); }
     
-    // 보강된 speak 함수
+    // 아이폰 사파리 호환성을 극대화한 speak 함수
     function speak(t, callback) { 
-        window.speechSynthesis.cancel(); // 이전 음성 모두 취소
+        if (!window.speechSynthesis) return;
+        window.speechSynthesis.cancel(); // 진행 중인 모든 음성 즉시 중단
+        
         const m = new SpeechSynthesisUtterance(t); 
         m.lang = 'ko-KR'; 
         m.rate = 1.0; 
+        
+        // 아이폰에서 음성 합성 엔진이 멈추는 버그 방지 로직
         if(callback) m.onend = callback;
+        
         window.speechSynthesis.speak(m); 
     }
 
@@ -229,9 +234,12 @@
     }
 
     async function startWorkout() {
+        // [핵심] 사용자의 클릭 이벤트 내에서 음성 엔진과 오디오 컨텍스트를 즉시 활성화
         if (audioCtx.state === 'suspended') await audioCtx.resume();
-        // 음성 엔진을 깨우기 위해 빈 음성을 한 번 보냄
-        speak(""); 
+        
+        // 아이폰 음성 엔진 예열 (빈 문장 말하기)
+        const dummy = new SpeechSynthesisUtterance("");
+        window.speechSynthesis.speak(dummy);
         
         toggleBtn.innerText = "⏸ PAUSE"; rightBtn.innerText = "■ STOP"; isPaused = false;
         settingsArea.style.opacity = '0.5'; settingsArea.style.pointerEvents = 'none';
