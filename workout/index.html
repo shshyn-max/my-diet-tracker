@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>프로 타바타 타이머 v5.9</title>
+    <title>프로 타바타 타이머 v6.1</title>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         :root { 
@@ -40,10 +40,14 @@
             border: var(--border-style);
         }
         .settings label { font-size: 0.7rem; font-weight: bold; margin-bottom: 6px; display: block; color: #ccc; }
+        
+        /* 아이폰 입력 시 화면 어긋남 방지를 위해 font-size를 16px로 고정 */
         .settings input { 
             width: 100%; max-width: 75px; background: var(--input-bg); border: none; color: #000; 
-            height: 45px; padding: 0; border-radius: 10px; text-align: center; font-size: 1.2rem; font-weight: 900;
-            margin: 0 auto; -webkit-appearance: none; -moz-appearance: textfield; line-height: 45px;
+            height: 45px; padding: 0; border-radius: 10px; text-align: center; 
+            font-size: 16px; font-weight: 900;
+            margin: 0 auto; -webkit-appearance: none; -moz-appearance: textfield; 
+            line-height: 45px; outline: none;
         }
         .settings input::-webkit-outer-spin-button, .settings input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
@@ -66,7 +70,7 @@
         
         .history-section-header { margin-top: 35px; }
 
-        .preset-container { display: flex; gap: 15px; overflow-x: auto; padding-bottom: 20px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+        .preset-container { display: flex; gap: 15px; overflow-x: auto; padding-bottom: 20px; scrollbar-width: none; -webkit-overflow-scrolling: touch; min-height: 50px; align-items: center; }
         .preset-container::-webkit-scrollbar { display: none; }
         
         .preset-item { 
@@ -79,7 +83,7 @@
         .preset-item span { font-size: 0.75rem; color: #bbb; }
         .btn-preset-del { position: absolute; top: 7px; right: 7px; background: rgba(255, 71, 87, 0.9); color: white; border: none; border-radius: 50%; width: 18px; height: 18px; font-size: 9px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
-        .history-list-wrapper { max-height: 240px; overflow-y: auto; scrollbar-width: thin; padding-right: 5px; }
+        .history-list-wrapper { max-height: 240px; overflow-y: auto; scrollbar-width: thin; padding-right: 5px; min-height: 60px; display: flex; flex-direction: column; }
         .history-list { list-style: none; padding: 0; margin: 0; }
         
         .history-item { 
@@ -91,6 +95,8 @@
         .history-info b { font-size: 0.95rem; display: block; margin-top: 4px; }
         .date-text { font-size: 0.8rem; color: #aaa; display: block; }
         .btn-delete { color: #ff4757; background: none; border: none; font-weight: bold; cursor: pointer; font-size: 0.9rem; }
+
+        .empty-msg { width: 100%; font-size: 0.9rem; color: #666; padding: 20px 0; font-style: italic; }
 
         body.mode-prepare { background-color: var(--ready-color); }
         body.mode-work { background-color: var(--work-color); }
@@ -124,7 +130,7 @@
         <div id="presetList" class="preset-container"></div>
         
         <div class="section-header history-section-header"><h3>최근 기록</h3></div>
-        <div class="history-list-wrapper">
+        <div class="history-list-wrapper" id="historyWrapper">
             <ul id="historyList" class="history-list"></ul>
         </div>
     </div>
@@ -283,40 +289,47 @@
         }());
         speak("수고하셨습니다.");
         playApplause();
-
-        // 3.5초 뒤 자동으로 화면 초기화 (READY 상태로 복귀)
-        setTimeout(() => {
-            performReset();
-        }, 3500);
+        setTimeout(() => performReset(), 3500);
     }
 
     async function finishWorkout() {
         clearInterval(timerId); timerId = null; isPaused = false;
         statusDisplay.innerText = "DONE!";
-        
         const now = Date.now();
         const settings = { work: config.work, rest: config.rest, sets: config.sets, rounds: config.rounds };
         await addDoc(collection(db, "workout_history"), { ...settings, date: new Date().toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }), createdAt: now });
         const snapshot = await getDocs(query(collection(db, "workout_presets"), where("work", "==", settings.work), where("rest", "==", settings.rest), where("sets", "==", settings.sets), where("rounds", "==", settings.rounds)));
         if (snapshot.empty) await addDoc(collection(db, "workout_presets"), { ...settings, updatedAt: now });
-        
         renderHistory(); renderPresets();
-        celebrate(); // 축하 효과 실행 (내부 로직으로 자동 리셋 포함)
+        celebrate();
     }
 
     async function renderPresets() {
         const snap = await getDocs(query(collection(db, "workout_presets"), orderBy("updatedAt", "desc"), limit(10)));
         let html = "";
-        if (!snap.empty && !timerId && currentRoundTotal === 1 && !isPaused) { const latest = snap.docs[0].data(); applyPreset(latest.work, latest.rest, latest.sets, latest.rounds); }
-        snap.forEach(d => { const p = d.data(); html += `<div class="preset-item" onclick="applyPreset(${p.work}, ${p.rest}, ${p.sets}, ${p.rounds})"><b>${p.sets}세트 X ${p.rounds}라운드</b><span>(${p.work}초운동, ${p.rest}초휴식)</span><button class="btn-preset-del" onclick="event.stopPropagation(); deleteOnlyPreset('${d.id}')">✕</button></div>`; });
+        if (snap.empty) {
+            html = '<div class="empty-msg">아직 설정값이 없습니다.</div>';
+        } else {
+            if (!timerId && currentRoundTotal === 1 && !isPaused) { const latest = snap.docs[0].data(); applyPreset(latest.work, latest.rest, latest.sets, latest.rounds); }
+            snap.forEach(d => { const p = d.data(); html += `<div class="preset-item" onclick="applyPreset(${p.work}, ${p.rest}, ${p.sets}, ${p.rounds})"><b>${p.sets}세트 X ${p.rounds}라운드</b><span>(${p.work}초운동, ${p.rest}초휴식)</span><button class="btn-preset-del" onclick="event.stopPropagation(); deleteOnlyPreset('${d.id}')">✕</button></div>`; });
+        }
         document.getElementById('presetList').innerHTML = html;
     }
 
     async function renderHistory() {
         const snap = await getDocs(query(collection(db, "workout_history"), orderBy("createdAt", "desc"), limit(20)));
         let html = "";
-        snap.forEach(d => { const item = d.data(); html += `<li class="history-item" onclick="applyPreset(${item.work}, ${item.rest}, ${item.sets}, ${item.rounds})"><div class="history-info"><span class="date-text">${item.date}</span><b>${item.sets}세트 X ${item.rounds}라운드</b><span style="font-size: 0.8rem; color: #bbb;">(${item.work}초운동, ${item.rest}초휴식)</span></div><button class="btn-delete" onclick="event.stopPropagation(); deleteItem('${d.id}')">삭제</button></li>`; });
-        document.getElementById('historyList').innerHTML = html;
+        const historyWrapper = document.getElementById('historyWrapper');
+        if (snap.empty) {
+            html = '<div class="empty-msg">최근 기록이 없습니다.</div>';
+            historyWrapper.style.justifyContent = 'center';
+        } else {
+            html = '<ul id="historyList" class="history-list">';
+            snap.forEach(d => { const item = d.data(); html += `<li class="history-item" onclick="applyPreset(${item.work}, ${item.rest}, ${item.sets}, ${item.rounds})"><div class="history-info"><span class="date-text">${item.date}</span><b>${item.sets}세트 X ${item.rounds}라운드</b><span style="font-size: 0.8rem; color: #bbb;">(${item.work}초운동, ${item.rest}초휴식)</span></div><button class="btn-delete" onclick="event.stopPropagation(); deleteItem('${d.id}')">삭제</button></li>`; });
+            html += '</ul>';
+            historyWrapper.style.justifyContent = 'flex-start';
+        }
+        historyWrapper.innerHTML = html;
     }
 
     toggleBtn.addEventListener('click', handleToggle);
