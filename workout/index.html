@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>프로 타바타 타이머 v5.8</title>
+    <title>프로 타바타 타이머 v5.9</title>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         :root { 
@@ -79,13 +79,7 @@
         .preset-item span { font-size: 0.75rem; color: #bbb; }
         .btn-preset-del { position: absolute; top: 7px; right: 7px; background: rgba(255, 71, 87, 0.9); color: white; border: none; border-radius: 50%; width: 18px; height: 18px; font-size: 9px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
-        /* 최근 기록 영역 높이 수정 (카드 약 3개 분량) */
-        .history-list-wrapper { 
-            max-height: 240px; 
-            overflow-y: auto; 
-            scrollbar-width: thin; 
-            padding-right: 5px; 
-        }
+        .history-list-wrapper { max-height: 240px; overflow-y: auto; scrollbar-width: thin; padding-right: 5px; }
         .history-list { list-style: none; padding: 0; margin: 0; }
         
         .history-item { 
@@ -225,7 +219,7 @@
     }
 
     async function startWorkout() {
-        audioCtx.resume();
+        if (audioCtx.state === 'suspended') await audioCtx.resume();
         toggleBtn.innerText = "⏸ PAUSE"; rightBtn.innerText = "■ STOP"; isPaused = false;
         settingsArea.style.opacity = '0.5'; settingsArea.style.pointerEvents = 'none';
         if (mode === 'PREPARE' && currentRoundTotal === 1 && timeLeft === config.prepare) { 
@@ -289,21 +283,25 @@
         }());
         speak("수고하셨습니다.");
         playApplause();
+
+        // 3.5초 뒤 자동으로 화면 초기화 (READY 상태로 복귀)
+        setTimeout(() => {
+            performReset();
+        }, 3500);
     }
 
     async function finishWorkout() {
         clearInterval(timerId); timerId = null; isPaused = false;
-        statusDisplay.innerText = "DONE!"; celebrate();
-        progressDisplay.innerText = `${totalRounds} / ${totalRounds} (100%)`;
-        totalDisplay.innerText = "00:00";
-        toggleBtn.innerText = "▶ START"; rightBtn.innerText = "⚙︎ 운동세팅";
+        statusDisplay.innerText = "DONE!";
+        
         const now = Date.now();
         const settings = { work: config.work, rest: config.rest, sets: config.sets, rounds: config.rounds };
         await addDoc(collection(db, "workout_history"), { ...settings, date: new Date().toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }), createdAt: now });
         const snapshot = await getDocs(query(collection(db, "workout_presets"), where("work", "==", settings.work), where("rest", "==", settings.rest), where("sets", "==", settings.sets), where("rounds", "==", settings.rounds)));
         if (snapshot.empty) await addDoc(collection(db, "workout_presets"), { ...settings, updatedAt: now });
+        
         renderHistory(); renderPresets();
-        settingsArea.style.opacity = '1'; settingsArea.style.pointerEvents = 'all';
+        celebrate(); // 축하 효과 실행 (내부 로직으로 자동 리셋 포함)
     }
 
     async function renderPresets() {
