@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>프로 타바타 타이머 v7.5</title>
+    <title>프로 타바타 타이머 v7.7</title>
+    
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><defs><linearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' style='stop-color:%23ff4757' /><stop offset='100%25' style='stop-color:%232ed573' /></linearGradient></defs><rect width='100' height='100' rx='20' fill='url(%23g)'/><circle cx='50' cy='53' r='18' fill='none' stroke='white' stroke-width='6'/><path d='M50 24V30M50 53L62 41' stroke='white' stroke-width='6' stroke-linecap='round'/><path d='M35 30L30 35M65 30L70 35' stroke='white' stroke-width='5' stroke-linecap='round'/></svg>">
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#ff4757">
-    
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><defs><linearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' style='stop-color:%23ff4757' /><stop offset='100%25' style='stop-color:%232ed573' /></linearGradient></defs><rect width='100' height='100' rx='20' fill='url(%23g)'/><path d='M50 25V35M50 75V65M75 50H65M25 50H35' stroke='white' stroke-width='8' stroke-linecap='round'/><circle cx='50' cy='50' r='20' fill='none' stroke='white' stroke-width='8'/></svg>">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><defs><linearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' style='stop-color:%23ff4757' /><stop offset='100%25' style='stop-color:%232ed573' /></linearGradient></defs><rect width='100' height='100' rx='20' fill='url(%23g)'/><path d='M50 25V35M50 75V65M75 50H65M25 50H35' stroke='white' stroke-width='8' stroke-linecap='round'/><circle cx='50' cy='50' r='20' fill='none' stroke='white' stroke-width='8'/></svg>">
 
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
@@ -43,8 +42,8 @@
         .modal-content { background: #222; padding: 30px; border-radius: 20px; text-align: center; width: 80%; max-width: 350px; border: 1px solid #444; }
         .modal-btns { display: flex; gap: 10px; margin-top: 25px; }
         .modal-btns button { flex: 1; padding: 15px; font-weight: bold; border-radius: 12px; }
-        .btn-cancel { background: #444; color: white; }
         .btn-confirm { background: var(--work-color); color: white; }
+        .btn-cancel { background: #444; color: white; }
 
         body.mode-prepare { background-color: var(--ready-color); }
         body.mode-work { background-color: var(--work-color); }
@@ -99,7 +98,7 @@
 
     let timerId = null, config = { work: 20, rest: 10, sets: 4, rounds: 2, prepare: 10 };
     let currentRoundTotal = 1, totalRounds = 8, mode = 'PREPARE', timeLeft = 10, totalSecondsLeft = 0, isPaused = false;
-    const timerDisplay = document.getElementById('timer'), statusDisplay = document.getElementById('status'), progressDisplay = document.getElementById('progressDisplay'), totalDisplay = document.getElementById('totalTimeDisplay'), toggleBtn = document.getElementById('toggleBtn'), rightBtn = document.getElementById('rightBtn'), settingsArea = document.getElementById('settingsArea');
+    const timerDisplay = document.getElementById('timer'), statusDisplay = document.getElementById('status'), progressDisplay = document.getElementById('progressDisplay'), totalDisplay = document.getElementById('totalTimeDisplay'), toggleBtn = document.getElementById('toggleBtn'), rightBtn = document.getElementById('rightBtn');
 
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     function playBeep(f, d, v=0.2) { const o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.connect(g); g.connect(audioCtx.destination); o.frequency.value = f; g.gain.setValueAtTime(v, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + d); o.start(); o.stop(audioCtx.currentTime + d); }
@@ -128,7 +127,7 @@
     const formatTime = (s) => `${Math.floor(Math.max(0,s)/60).toString().padStart(2,'0')}:${(Math.max(0,s)%60).toString().padStart(2,'0')}`;
     function updateInfo() { config.work = parseInt(document.getElementById('inputWork').value) || 0; config.rest = parseInt(document.getElementById('inputRest').value) || 0; config.sets = parseInt(document.getElementById('inputSets').value) || 1; config.rounds = parseInt(document.getElementById('inputRounds').value) || 1; totalRounds = config.sets * config.rounds; timeLeft = (timerId || isPaused) ? timeLeft : config.prepare; totalSecondsLeft = config.prepare + ((config.work + config.rest) * totalRounds) - config.rest; timerDisplay.innerText = timeLeft; progressDisplay.innerText = `${currentRoundTotal} / ${totalRounds} (${Math.floor(((currentRoundTotal-1)/totalRounds)*100)}%)`; totalDisplay.innerText = formatTime(totalSecondsLeft); }
 
-    async function startWorkout() { if (audioCtx.state === 'suspended') await audioCtx.resume(); playBeep(660, 0.2); toggleBtn.innerText = "⏸ PAUSE"; rightBtn.innerText = "■ STOP"; isPaused = false; settingsArea.style.opacity = '0.5'; settingsArea.style.pointerEvents = 'none'; runInterval(); }
+    async function startWorkout() { if (audioCtx.state === 'suspended') await audioCtx.resume(); playBeep(660, 0.2); toggleBtn.innerText = "⏸ PAUSE"; rightBtn.innerText = "■ STOP"; isPaused = false; document.getElementById('settingsArea').style.opacity = '0.5'; document.getElementById('settingsArea').style.pointerEvents = 'none'; runInterval(); }
     function runInterval() {
         document.body.className = `mode-${mode.toLowerCase()}`; statusDisplay.innerText = mode;
         timerId = setInterval(() => {
@@ -143,7 +142,7 @@
         }, 1000);
     }
 
-    function performReset() { clearInterval(timerId); timerId = null; isPaused = false; mode = 'PREPARE'; currentRoundTotal = 1; updateInfo(); toggleBtn.innerText = "▶ START"; rightBtn.innerText = "⚙︎ 운동세팅"; settingsArea.style.opacity = '1'; settingsArea.style.pointerEvents = 'all'; document.body.className = ''; }
+    function performReset() { clearInterval(timerId); timerId = null; isPaused = false; mode = 'PREPARE'; currentRoundTotal = 1; updateInfo(); toggleBtn.innerText = "▶ START"; rightBtn.innerText = "⚙︎ 운동세팅"; document.getElementById('settingsArea').style.opacity = '1'; document.getElementById('settingsArea').style.pointerEvents = 'all'; document.body.className = ''; }
     async function finishWorkout() { 
         clearInterval(timerId); timerId = null; isPaused = false; statusDisplay.innerText = "DONE!"; 
         const now = Date.now(); const s = { work: config.work, rest: config.rest, sets: config.sets, rounds: config.rounds };
