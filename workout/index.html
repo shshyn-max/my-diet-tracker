@@ -313,4 +313,33 @@
         if (snap.empty) {
             html = '<div class="empty-msg">아직 설정값이 없습니다.</div>';
         } else {
-            if (!timerId && currentRoundTotal === 1 && !isPaused) { const
+            if (!timerId && currentRoundTotal === 1 && !isPaused) { const latest = snap.docs[0].data(); applyPreset(latest.work, latest.rest, latest.sets, latest.rounds); }
+            snap.forEach(d => { const p = d.data(); html += `<div class="preset-item" onclick="applyPreset(${p.work}, ${p.rest}, ${p.sets}, ${p.rounds})"><b>${p.sets}세트 X ${p.rounds}라운드</b><span>(${p.work}초운동, ${p.rest}초휴식)</span><button class="btn-preset-del" onclick="event.stopPropagation(); deleteOnlyPreset('${d.id}')">✕</button></div>`; });
+        }
+        document.getElementById('presetList').innerHTML = html;
+    }
+
+    async function renderHistory() {
+        const snap = await getDocs(query(collection(db, "workout_history"), orderBy("createdAt", "desc"), limit(20)));
+        let html = "";
+        const historyWrapper = document.getElementById('historyWrapper');
+        if (snap.empty) {
+            html = '<div class="empty-msg">최근 기록이 없습니다.</div>';
+            historyWrapper.style.justifyContent = 'center';
+        } else {
+            html = '<ul id="historyList" class="history-list">';
+            snap.forEach(d => { const item = d.data(); html += `<li class="history-item" onclick="applyPreset(${item.work}, ${item.rest}, ${item.sets}, ${item.rounds})"><div class="history-info"><span class="date-text">${item.date}</span><b>${item.sets}세트 X ${item.rounds}라운드</b><span style="font-size: 0.8rem; color: #bbb;">(${item.work}초운동, ${item.rest}초휴식)</span></div><button class="btn-delete" onclick="event.stopPropagation(); deleteItem('${d.id}')">삭제</button></li>`; });
+            html += '</ul>';
+            historyWrapper.style.justifyContent = 'flex-start';
+        }
+        historyWrapper.innerHTML = html;
+    }
+
+    toggleBtn.addEventListener('click', handleToggle);
+    rightBtn.addEventListener('click', handleRightBtn);
+    // input 이벤트를 사용하여 숫자가 바뀔 때마다 즉시 반영
+    document.querySelectorAll('input').forEach(i => i.addEventListener('input', updateInfo));
+    window.onload = () => { updateInfo(); renderHistory(); renderPresets(); };
+</script>
+</body>
+</html>
