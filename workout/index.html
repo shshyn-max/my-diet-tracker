@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>프로 타바타 타이머 v6.1</title>
+    <title>프로 타바타 타이머 v6.2</title>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         :root { 
@@ -20,6 +20,7 @@
             display: flex; flex-direction: column; align-items: center; 
             min-height: 100vh; margin: 0; transition: background 0.5s ease;
             padding-bottom: env(safe-area-inset-bottom, 20px);
+            overflow-x: hidden; /* 가로 밀림 방지 */
         }
 
         .main-layout {
@@ -38,16 +39,18 @@
             background: rgba(0, 0, 0, 0.75); padding: 18px; border-radius: 20px; 
             margin-bottom: 20px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; 
             border: var(--border-style);
+            align-items: end; /* 라벨과 입력창 높이 고정 */
         }
         .settings label { font-size: 0.7rem; font-weight: bold; margin-bottom: 6px; display: block; color: #ccc; }
         
-        /* 아이폰 입력 시 화면 어긋남 방지를 위해 font-size를 16px로 고정 */
         .settings input { 
             width: 100%; max-width: 75px; background: var(--input-bg); border: none; color: #000; 
             height: 45px; padding: 0; border-radius: 10px; text-align: center; 
             font-size: 16px; font-weight: 900;
             margin: 0 auto; -webkit-appearance: none; -moz-appearance: textfield; 
-            line-height: 45px; outline: none;
+            line-height: normal; /* 아이폰 텍스트 수직 밀림 방지 */
+            outline: none;
+            box-sizing: border-box;
         }
         .settings input::-webkit-outer-spin-button, .settings input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
@@ -108,10 +111,10 @@
 <div class="main-layout">
     <div class="timer-section container">
         <div class="settings" id="settingsArea">
-            <div style="text-align: center;"><label>운동</label><input type="number" id="inputWork" value="20"></div>
-            <div style="text-align: center;"><label>휴식</label><input type="number" id="inputRest" value="10"></div>
-            <div style="text-align: center;"><label>세트</label><input type="number" id="inputSets" value="4"></div>
-            <div style="text-align: center;"><label>라운드</label><input type="number" id="inputRounds" value="2"></div>
+            <div style="text-align: center;"><label>운동</label><input type="text" inputmode="numeric" pattern="[0-9]*" id="inputWork" value="20" autocomplete="off"></div>
+            <div style="text-align: center;"><label>휴식</label><input type="text" inputmode="numeric" pattern="[0-9]*" id="inputRest" value="10" autocomplete="off"></div>
+            <div style="text-align: center;"><label>세트</label><input type="text" inputmode="numeric" pattern="[0-9]*" id="inputSets" value="4" autocomplete="off"></div>
+            <div style="text-align: center;"><label>라운드</label><input type="text" inputmode="numeric" pattern="[0-9]*" id="inputRounds" value="2" autocomplete="off"></div>
         </div>
         <div class="info-panel">
             <div class="info-item"><span>PROGRESS (%)</span><b id="progressDisplay">1 / 1 (0%)</b></div>
@@ -310,32 +313,4 @@
         if (snap.empty) {
             html = '<div class="empty-msg">아직 설정값이 없습니다.</div>';
         } else {
-            if (!timerId && currentRoundTotal === 1 && !isPaused) { const latest = snap.docs[0].data(); applyPreset(latest.work, latest.rest, latest.sets, latest.rounds); }
-            snap.forEach(d => { const p = d.data(); html += `<div class="preset-item" onclick="applyPreset(${p.work}, ${p.rest}, ${p.sets}, ${p.rounds})"><b>${p.sets}세트 X ${p.rounds}라운드</b><span>(${p.work}초운동, ${p.rest}초휴식)</span><button class="btn-preset-del" onclick="event.stopPropagation(); deleteOnlyPreset('${d.id}')">✕</button></div>`; });
-        }
-        document.getElementById('presetList').innerHTML = html;
-    }
-
-    async function renderHistory() {
-        const snap = await getDocs(query(collection(db, "workout_history"), orderBy("createdAt", "desc"), limit(20)));
-        let html = "";
-        const historyWrapper = document.getElementById('historyWrapper');
-        if (snap.empty) {
-            html = '<div class="empty-msg">최근 기록이 없습니다.</div>';
-            historyWrapper.style.justifyContent = 'center';
-        } else {
-            html = '<ul id="historyList" class="history-list">';
-            snap.forEach(d => { const item = d.data(); html += `<li class="history-item" onclick="applyPreset(${item.work}, ${item.rest}, ${item.sets}, ${item.rounds})"><div class="history-info"><span class="date-text">${item.date}</span><b>${item.sets}세트 X ${item.rounds}라운드</b><span style="font-size: 0.8rem; color: #bbb;">(${item.work}초운동, ${item.rest}초휴식)</span></div><button class="btn-delete" onclick="event.stopPropagation(); deleteItem('${d.id}')">삭제</button></li>`; });
-            html += '</ul>';
-            historyWrapper.style.justifyContent = 'flex-start';
-        }
-        historyWrapper.innerHTML = html;
-    }
-
-    toggleBtn.addEventListener('click', handleToggle);
-    rightBtn.addEventListener('click', handleRightBtn);
-    document.querySelectorAll('input').forEach(i => i.addEventListener('change', updateInfo));
-    window.onload = () => { updateInfo(); renderHistory(); renderPresets(); };
-</script>
-</body>
-</html>
+            if (!timerId && currentRoundTotal === 1 && !isPaused) { const
