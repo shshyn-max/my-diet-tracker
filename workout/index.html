@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>프로 타바타 타이머 v7.1 FINAL</title>
+    <title>프로 타바타 타이머 v7.2</title>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         :root { 
@@ -72,107 +72,4 @@
         </div>
     </div>
     <div class="data-section container">
-        <div class="section-header"><h3>최근 설정셋</h3></div>
-        <div id="presetList" class="preset-container"></div>
-        <div class="section-header history-section-header"><h3>최근 기록</h3></div>
-        <div class="history-list-wrapper" id="historyWrapper"><ul id="historyList" class="history-list"></ul></div>
-    </div>
-</div>
-
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, deleteDoc, doc, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-    const firebaseConfig = { apiKey: "AIzaSyBAwk8ms_RHgV3I4eVBnWqMKc7UBwk3vm8", authDomain: "my-tabata-web.firebaseapp.com", projectId: "my-tabata-web", storageBucket: "my-tabata-web.firebasestorage.app", messagingSenderId: "154823281802", appId: "1:154823281802:web:21e51b45843e7e4cb3f173" };
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
-    // 전역 상태 및 타이머 변수
-    let timerId = null, config = { work: 20, rest: 10, sets: 4, rounds: 2, prepare: 10 };
-    let currentRoundTotal = 1, totalRounds = 8, mode = 'PREPARE', timeLeft = 10, totalSecondsLeft = 0, isPaused = false;
-
-    // DOM 요소 참조
-    const timerDisplay = document.getElementById('timer'), statusDisplay = document.getElementById('status'), progressDisplay = document.getElementById('progressDisplay'), totalDisplay = document.getElementById('totalTimeDisplay'), toggleBtn = document.getElementById('toggleBtn'), rightBtn = document.getElementById('rightBtn'), settingsArea = document.getElementById('settingsArea');
-
-    // 오디오 설정
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    function playBeep(f, d) { const o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.connect(g); g.connect(audioCtx.destination); o.frequency.value = f; o.start(); setTimeout(() => o.stop(), d); }
-    function speak(text) { if (!window.speechSynthesis || !text) return; window.speechSynthesis.cancel(); const msg = new SpeechSynthesisUtterance(text); msg.lang = 'ko-KR'; window.speechSynthesis.speak(msg); }
-
-    // 데이터 표시 및 관리 함수
-    window.applyPreset = (work, rest, sets, rounds) => { 
-        if (timerId || isPaused) return; 
-        document.getElementById('inputWork').value = work; 
-        document.getElementById('inputRest').value = rest; 
-        document.getElementById('inputSets').value = sets; 
-        document.getElementById('inputRounds').value = rounds; 
-        updateInfo(); 
-    };
-
-    window.deleteOnlyPreset = async (id) => { if(confirm("이 설정 버튼을 삭제하시겠습니까?")) { await deleteDoc(doc(db, "workout_presets", id)); renderPresets(); } };
-    window.deleteItem = async (id) => { if(confirm("이 기록을 삭제하시겠습니까?")) { await deleteDoc(doc(db, "workout_history", id)); renderHistory(); } };
-
-    async function renderPresets() {
-        const snap = await getDocs(query(collection(db, "workout_presets"), orderBy("updatedAt", "desc"), limit(10)));
-        let html = "";
-        if (snap.empty) { html = '<div class="empty-msg">아직 설정값이 없습니다.</div>'; }
-        else { 
-            snap.forEach(d => { const p = d.data(); html += `<div class="preset-item" onclick="applyPreset(${p.work}, ${p.rest}, ${p.sets}, ${p.rounds})"><b>${p.sets}세트 X ${p.rounds}라운드</b><span>(${p.work}초운동, ${p.rest}초휴식)</span><button class="btn-preset-del" onclick="event.stopPropagation(); deleteOnlyPreset('${d.id}')">✕</button></div>`; });
-        }
-        document.getElementById('presetList').innerHTML = html;
-    }
-
-    async function renderHistory() {
-        const snap = await getDocs(query(collection(db, "workout_history"), orderBy("createdAt", "desc"), limit(20)));
-        let html = "";
-        if (snap.empty) { html = '<div class="empty-msg">최근 기록이 없습니다.</div>'; }
-        else { 
-            html = '<ul id="historyList" class="history-list">';
-            snap.forEach(d => { const item = d.data(); html += `<li class="history-item" onclick="applyPreset(${item.work}, ${item.rest}, ${item.sets}, ${item.rounds})"><div class="history-info"><span class="date-text">${item.date}</span><b>${item.sets}세트 X ${item.rounds}라운드</b><span style="font-size: 0.8rem; color: #bbb;">(${item.work}초운동, ${item.rest}초휴식)</span></div><button class="btn-delete" onclick="event.stopPropagation(); deleteItem('${d.id}')">삭제</button></li>`; });
-            html += '</ul>';
-        }
-        document.getElementById('historyWrapper').innerHTML = html;
-    }
-
-    // 타이머 로직
-    const formatTime = (s) => `${Math.floor(Math.max(0,s)/60).toString().padStart(2,'0')}:${(Math.max(0,s)%60).toString().padStart(2,'0')}`;
-    function updateInfo() { config.work = parseInt(document.getElementById('inputWork').value) || 0; config.rest = parseInt(document.getElementById('inputRest').value) || 0; config.sets = parseInt(document.getElementById('inputSets').value) || 1; config.rounds = parseInt(document.getElementById('inputRounds').value) || 1; totalRounds = config.sets * config.rounds; timeLeft = (timerId || isPaused) ? timeLeft : config.prepare; totalSecondsLeft = config.prepare + ((config.work + config.rest) * totalRounds) - config.rest; timerDisplay.innerText = timeLeft; progressDisplay.innerText = `${currentRoundTotal} / ${totalRounds} (${Math.floor(((currentRoundTotal-1)/totalRounds)*100)}%)`; totalDisplay.innerText = formatTime(totalSecondsLeft); }
-
-    async function startWorkout() {
-        if (audioCtx.state === 'suspended') await audioCtx.resume();
-        speak("운동을 시작합니다."); 
-        toggleBtn.innerText = "⏸ PAUSE"; rightBtn.innerText = "■ STOP"; isPaused = false;
-        settingsArea.style.opacity = '0.5'; settingsArea.style.pointerEvents = 'none';
-        runInterval();
-    }
-
-    function runInterval() {
-        document.body.className = `mode-${mode.toLowerCase()}`; statusDisplay.innerText = mode;
-        timerId = setInterval(() => {
-            timeLeft--; totalSecondsLeft--; timerDisplay.innerText = Math.max(0, timeLeft); totalDisplay.innerText = formatTime(totalSecondsLeft);
-            if (timeLeft <= 3 && timeLeft > 0) playBeep(440, 100);
-            if (timeLeft <= 0) {
-                playBeep(880, 500); clearInterval(timerId);
-                if (mode === 'PREPARE') { mode = 'WORK'; timeLeft = config.work; runInterval(); }
-                else if (mode === 'WORK') { if (currentRoundTotal >= totalRounds) finishWorkout(); else { mode = 'REST'; timeLeft = config.rest; speak("휴식"); runInterval(); } }
-                else { currentRoundTotal++; mode = 'WORK'; timeLeft = config.work; updateInfo(); speak(currentRoundTotal + "세트 시작"); runInterval(); }
-            }
-        }, 1000);
-    }
-
-    function performReset() { clearInterval(timerId); timerId = null; isPaused = false; mode = 'PREPARE'; currentRoundTotal = 1; updateInfo(); toggleBtn.innerText = "▶ START"; rightBtn.innerText = "⚙︎ 운동세팅"; settingsArea.style.opacity = '1'; settingsArea.style.pointerEvents = 'all'; document.body.className = ''; }
-    function pauseWorkout() { clearInterval(timerId); timerId = null; isPaused = true; toggleBtn.innerText = "▶ 재시작"; rightBtn.innerText = "■ STOP"; }
-    async function finishWorkout() { clearInterval(timerId); timerId = null; isPaused = false; statusDisplay.innerText = "DONE!"; const now = Date.now(); const settings = { work: config.work, rest: config.rest, sets: config.sets, rounds: config.rounds }; await addDoc(collection(db, "workout_history"), { ...settings, date: new Date().toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }), createdAt: now }); await addDoc(collection(db, "workout_presets"), { ...settings, updatedAt: now }); renderHistory(); renderPresets(); celebrate(); }
-    function celebrate() { confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } }); speak("수고하셨습니다."); playApplause(); setTimeout(performReset, 3500); }
-    function playApplause() { const duration = 3000, end = Date.now() + duration; const playClap = () => { if (Date.now() > end) return; const bufferSize = audioCtx.sampleRate * 0.1, buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate), data = buffer.getChannelData(0); for (let i = 0; i < bufferSize; i++) { data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.2)); } const noise = audioCtx.createBufferSource(); noise.buffer = buffer; const filter = audioCtx.createBiquadFilter(); filter.type = 'highpass'; filter.frequency.value = 1000; noise.connect(filter); filter.connect(audioCtx.destination); noise.start(); setTimeout(playClap, Math.random() * 100 + 50); }; playClap(); }
-
-    // 이벤트 리스너 등록
-    toggleBtn.addEventListener('click', () => { if (!timerId) startWorkout(); else pauseWorkout(); });
-    rightBtn.addEventListener('click', async () => { if (timerId || isPaused) { if (confirm("운동을 중단하시겠습니까?")) performReset(); } else { alert("설정을 완료했습니다."); const s = { work: config.work, rest: config.rest, sets: config.sets, rounds: config.rounds, updatedAt: Date.now() }; await addDoc(collection(db, "workout_presets"), s); renderPresets(); } });
-    document.querySelectorAll('input').forEach(i => i.addEventListener('input', updateInfo));
-
-    // 페이지 로드 시 초기화
-    window.addEventListener('DOMContentLoaded', () => { updateInfo(); renderHistory(); renderPresets(); });
-</script>
-</body>
-</html>
+        <div class="section-header"><h3>최근 설정셋</h3>
