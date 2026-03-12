@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>프로 타바타 타이머 v7.7</title>
+    <title>프로 타바타 타이머 v8.0</title>
     
-    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><defs><linearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' style='stop-color:%23ff4757' /><stop offset='100%25' style='stop-color:%232ed573' /></linearGradient></defs><rect width='100' height='100' rx='20' fill='url(%23g)'/><circle cx='50' cy='53' r='18' fill='none' stroke='white' stroke-width='6'/><path d='M50 24V30M50 53L62 41' stroke='white' stroke-width='6' stroke-linecap='round'/><path d='M35 30L30 35M65 30L70 35' stroke='white' stroke-width='5' stroke-linecap='round'/></svg>">
+    <link rel="apple-touch-icon" href="icon.png">
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -26,7 +26,7 @@
         .container { width: 100%; text-align: center; }
         .settings { background: rgba(0, 0, 0, 0.75); padding: 18px; border-radius: 20px; margin-bottom: 20px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; border: var(--border-style); align-items: end; }
         .settings label { font-size: 0.7rem; font-weight: bold; margin-bottom: 6px; display: block; color: #ccc; }
-        .settings input { width: 100%; max-width: 75px; background: var(--input-bg); border: none; color: #000; height: 45px; padding: 0; border-radius: 10px; text-align: center; font-size: 16px; font-weight: 900; margin: 0 auto; -webkit-appearance: none; -moz-appearance: textfield; line-height: normal; outline: none; box-sizing: border-box; }
+        .settings input { width: 100%; max-width: 75px; background: var(--input-bg); border: none; color: #000; height: 45px; padding: 0; border-radius: 10px; text-align: center; font-size: 16px; font-weight: 900; margin: 0 auto; -webkit-appearance: none; outline: none; box-sizing: border-box; }
         .info-panel { margin-bottom: 25px; display: flex; justify-content: space-around; background: rgba(0, 0, 0, 0.75); padding: 15px; border-radius: 18px; border: var(--border-style); }
         .info-item span { display: block; font-size: 0.75rem; color: #ccc; margin-bottom: 5px; }
         .info-item b { font-size: 1.2rem; }
@@ -38,6 +38,7 @@
         .btn-toggle, .btn-right { background: #fff; color: #000; font-size: 1.1rem; }
         .btn-right { border: var(--border-style); }
 
+        /* 커스텀 다이얼로그 모달 */
         #customModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; }
         .modal-content { background: #222; padding: 30px; border-radius: 20px; text-align: center; width: 80%; max-width: 350px; border: 1px solid #444; }
         .modal-btns { display: flex; gap: 10px; margin-top: 25px; }
@@ -112,14 +113,14 @@
 
     async function renderPresets() {
         const snap = await getDocs(query(collection(db, "workout_presets"), orderBy("updatedAt", "desc"), limit(10)));
-        let html = snap.empty ? '<div style="font-size:0.9rem; color:#666; font-style:italic;">아직 설정값이 없습니다.</div>' : "";
-        snap.forEach(d => { const p = d.data(); html += `<div style="flex:0 0 auto; min-width:160px; background:rgba(25,25,25,0.8); border:1px solid rgba(255,255,255,0.15); padding:20px; border-radius:18px; position:relative; text-align:center;" onclick="applyPreset(${p.work}, ${p.rest}, ${p.sets}, ${p.rounds})"><b style="display:block; margin-bottom:5px;">${p.sets}세트 X ${p.rounds}라운드</b><span style="font-size:0.8rem; color:#bbb;">(${p.work}초운동, ${p.rest}초휴식)</span><button style="position:absolute; top:5px; right:5px; background:red; color:white; border:none; border-radius:50%; width:20px; height:20px; font-size:10px;" onclick="event.stopPropagation(); deleteOnlyPreset('${d.id}')">✕</button></div>`; });
+        let html = snap.empty ? '<div style="font-size:0.9rem; color:#666; font-style:italic;">설정셋 없음</div>' : "";
+        snap.forEach(d => { const p = d.data(); html += `<div style="flex:0 0 auto; min-width:160px; background:rgba(25,25,25,0.8); border:1px solid rgba(255,255,255,0.15); padding:20px; border-radius:18px; position:relative; text-align:center;" onclick="applyPreset(${p.work}, ${p.rest}, ${p.sets}, ${p.rounds})"><b style="display:block; margin-bottom:5px;">${p.sets}세트 X ${p.rounds}라운드</b><span style="font-size:0.8rem; color:#bbb;">(${p.work}s/${p.rest}s)</span><button style="position:absolute; top:5px; right:5px; background:red; color:white; border:none; border-radius:50%; width:20px; height:20px; font-size:10px;" onclick="event.stopPropagation(); deleteOnlyPreset('${d.id}')">✕</button></div>`; });
         document.getElementById('presetList').innerHTML = html;
     }
 
     async function renderHistory() {
         const snap = await getDocs(query(collection(db, "workout_history"), orderBy("createdAt", "desc"), limit(20)));
-        let html = snap.empty ? '<div style="font-size:0.9rem; color:#666; font-style:italic; text-align:center;">최근 기록이 없습니다.</div>' : '<ul style="list-style:none; padding:0; margin:0;">';
+        let html = snap.empty ? '<div style="font-size:0.9rem; color:#666; font-style:italic; text-align:center;">기록 없음</div>' : '<ul style="list-style:none; padding:0; margin:0;">';
         snap.forEach(d => { const item = d.data(); html += `<li style="background:rgba(25,25,25,0.8); border:1px solid rgba(255,255,255,0.15); padding:15px; border-radius:15px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;" onclick="applyPreset(${item.work}, ${item.rest}, ${item.sets}, ${item.rounds})"><div><span style="font-size:0.8rem; color:#aaa; display:block;">${item.date}</span><b>${item.sets}세트 X ${item.rounds}라운드</b></div><button style="color:red; background:none; border:none; font-weight:bold;" onclick="event.stopPropagation(); deleteItem('${d.id}')">삭제</button></li>`; });
         document.getElementById('historyWrapper').innerHTML = html + (snap.empty ? "" : "</ul>");
     }
