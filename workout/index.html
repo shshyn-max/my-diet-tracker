@@ -3,14 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>상희의운동타바타</title>
-    
+    <title>프로 타바타 v8.8.1</title>
     <link rel="apple-touch-icon" href="icon.png">
-    
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#ff4757">
-
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         :root { 
@@ -24,28 +18,42 @@
         .main-layout { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 1000px; padding: 25px; box-sizing: border-box; gap: 30px; }
         @media (min-width: 900px) and (orientation: landscape) { .main-layout { flex-direction: row; align-items: flex-start; justify-content: center; gap: 40px; padding-top: 40px; } .timer-section { flex: 1.2; position: sticky; top: 40px; } .data-section { flex: 1; max-width: 450px; } }
         .container { width: 100%; text-align: center; }
+        
+        /* 타이머 설정 영역 */
         .settings { background: rgba(0, 0, 0, 0.75); padding: 18px; border-radius: 20px; margin-bottom: 20px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; border: var(--border-style); align-items: end; }
         .settings label { font-size: 0.7rem; font-weight: bold; margin-bottom: 6px; display: block; color: #ccc; }
         .settings input { width: 100%; max-width: 75px; background: var(--input-bg); border: none; color: #000; height: 45px; padding: 0; border-radius: 10px; text-align: center; font-size: 16px; font-weight: 900; margin: 0 auto; -webkit-appearance: none; outline: none; box-sizing: border-box; }
+        
         .info-panel { margin-bottom: 25px; display: flex; justify-content: space-around; background: rgba(0, 0, 0, 0.75); padding: 15px; border-radius: 18px; border: var(--border-style); }
         .info-item span { display: block; font-size: 0.75rem; color: #ccc; margin-bottom: 5px; }
         .info-item b { font-size: 1.2rem; }
+        
         #status { font-size: 2rem; font-weight: 800; height: 2.5rem; letter-spacing: 2px; margin-bottom: 15px; }
         #timer { font-size: 45vw; font-weight: 900; line-height: 0.8; margin: 40px 0; font-variant-numeric: tabular-nums; text-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         @media (min-width: 900px) { #timer { font-size: 250px; } }
-        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px; }
+        
         button { border: none; padding: 18px; border-radius: 18px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px; }
         .btn-toggle, .btn-right { background: #fff; color: #000; font-size: 1.1rem; }
         .btn-right { border: var(--border-style); }
 
-        /* 커스텀 다이얼로그 모달 */
-        #customModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; }
-        .modal-content { background: #222; padding: 30px; border-radius: 20px; text-align: center; width: 80%; max-width: 350px; border: 1px solid #444; }
-        .modal-btns { display: flex; gap: 10px; margin-top: 25px; }
-        .modal-btns button { flex: 1; padding: 15px; font-weight: bold; border-radius: 12px; }
-        .btn-confirm { background: var(--work-color); color: white; }
-        .btn-cancel { background: #444; color: white; }
+        /* 최근 기록 헤더 영역 */
+        .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; }
+        .history-header h3 { margin: 0; font-size: 1.1rem; color: #eee; }
+        .btn-stats-link { color: #aaa; text-decoration: none; font-size: 0.8rem; border: 1px solid rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 8px; }
 
+        /* 최근 기록 카드 및 버튼 간격 최적화 */
+        .history-item { background: var(--card-bg); border: var(--border-style); padding: 15px 18px; border-radius: 18px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .history-info { flex: 1; cursor: pointer; text-align: left; }
+        .date-text { font-size: 0.85rem; color: #aaa; display: block; margin-bottom: 6px; }
+        .history-info b { font-size: 1.1rem; display: block; margin-bottom: 4px; }
+        .detail-text { font-size: 0.9rem; color: #bbb; }
+        
+        .history-btns { display: flex; flex-direction: row; gap: 15px; align-items: center; padding-left: 10px; }
+        .btn-save-text { color: #2ed573; background: none; border: none; font-size: 0.85rem; font-weight: bold; padding: 0; cursor: pointer; white-space: nowrap; }
+        .btn-del-text { color: #ff4757; background: none; border: none; font-size: 0.85rem; font-weight: bold; padding: 0; cursor: pointer; white-space: nowrap; }
+        
+        .empty-msg { width: 100%; font-size: 0.9rem; color: #666; padding: 20px 0; text-align: center; }
         body.mode-prepare { background-color: var(--ready-color); }
         body.mode-work { background-color: var(--work-color); }
         body.mode-rest { background-color: var(--rest-color); }
@@ -55,10 +63,10 @@
 <div class="main-layout">
     <div class="timer-section container">
         <div class="settings" id="settingsArea">
-            <div style="text-align: center;"><label>운동</label><input type="text" inputmode="numeric" pattern="[0-9]*" id="inputWork" value="20" autocomplete="off"></div>
-            <div style="text-align: center;"><label>휴식</label><input type="text" inputmode="numeric" pattern="[0-9]*" id="inputRest" value="10" autocomplete="off"></div>
-            <div style="text-align: center;"><label>세트</label><input type="text" inputmode="numeric" pattern="[0-9]*" id="inputSets" value="4" autocomplete="off"></div>
-            <div style="text-align: center;"><label>라운드</label><input type="text" inputmode="numeric" pattern="[0-9]*" id="inputRounds" value="2" autocomplete="off"></div>
+            <div style="text-align: center;"><label>운동</label><input type="text" inputmode="numeric" id="inputWork" value="20"></div>
+            <div style="text-align: center;"><label>휴식</label><input type="text" inputmode="numeric" id="inputRest" value="10"></div>
+            <div style="text-align: center;"><label>세트</label><input type="text" inputmode="numeric" id="inputSets" value="4"></div>
+            <div style="text-align: center;"><label>라운드</label><input type="text" inputmode="numeric" id="inputRounds" value="2"></div>
         </div>
         <div class="info-panel">
             <div class="info-item"><span>PROGRESS (%)</span><b id="progressDisplay">1 / 1 (0%)</b></div>
@@ -72,26 +80,14 @@
         </div>
     </div>
     <div class="data-section container">
-        <div class="section-header" style="margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 5px;"><h3>최근 설정셋</h3></div>
-        <div id="presetList" style="display: flex; gap: 15px; overflow-x: auto; padding-bottom: 20px;"></div>
-        <div class="section-header" style="margin-top: 35px; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 5px;"><h3>최근 기록</h3></div>
-        <div id="historyWrapper" style="max-height: 240px; overflow-y: auto;"></div>
-    </div>
-</div>
-
-<div id="customModal">
-    <div class="modal-content">
-        <div id="modalMsg" style="margin-bottom: 20px;">운동을 중단하시겠습니까?</div>
-        <div class="modal-btns">
-            <button class="btn-cancel" id="modalCancel">취소</button>
-            <button class="btn-confirm" id="modalConfirm">중단</button>
-        </div>
+        <div id="presetList" style="display: flex; gap: 10px; overflow-x: auto; margin-bottom: 25px;"></div>
+        <div id="historyWrapper"></div>
     </div>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, deleteDoc, doc, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = { apiKey: "AIzaSyBAwk8ms_RHgV3I4eVBnWqMKc7UBwk3vm8", authDomain: "my-tabata-web.firebaseapp.com", projectId: "my-tabata-web", storageBucket: "my-tabata-web.firebasestorage.app", messagingSenderId: "154823281802", appId: "1:154823281802:web:21e51b45843e7e4cb3f173" };
     const app = initializeApp(firebaseConfig);
@@ -99,62 +95,76 @@
 
     let timerId = null, config = { work: 20, rest: 10, sets: 4, rounds: 2, prepare: 10 };
     let currentRoundTotal = 1, totalRounds = 8, mode = 'PREPARE', timeLeft = 10, totalSecondsLeft = 0, isPaused = false;
-    const timerDisplay = document.getElementById('timer'), statusDisplay = document.getElementById('status'), progressDisplay = document.getElementById('progressDisplay'), totalDisplay = document.getElementById('totalTimeDisplay'), toggleBtn = document.getElementById('toggleBtn'), rightBtn = document.getElementById('rightBtn');
+    const timerDisplay = document.getElementById('timer'), statusDisplay = document.getElementById('status'), progressDisplay = document.getElementById('progressDisplay'), totalDisplay = document.getElementById('totalTimeDisplay'), toggleBtn = document.getElementById('toggleBtn'), rightBtn = document.getElementById('rightBtn'), settingsArea = document.getElementById('settingsArea');
 
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    function playBeep(f, d, v=0.2) { const o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.connect(g); g.connect(audioCtx.destination); o.frequency.value = f; g.gain.setValueAtTime(v, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + d); o.start(); o.stop(audioCtx.currentTime + d); }
+    function playBeep(f, d) { const o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.connect(g); g.connect(audioCtx.destination); o.frequency.value = f; o.start(); setTimeout(() => o.stop(), d); }
 
-    const modal = document.getElementById('customModal');
-    function showModal(msg, onConfirm) { document.getElementById('modalMsg').innerText = msg; modal.style.display = 'flex'; document.getElementById('modalConfirm').onclick = () => { modal.style.display = 'none'; onConfirm(); }; document.getElementById('modalCancel').onclick = () => { modal.style.display = 'none'; }; }
+    window.saveToStats = async (id) => {
+        if(!confirm("이 기록을 통계 데이터로 저장하시겠습니까?")) return;
+        try {
+            const snap = await getDocs(query(collection(db, "workout_history"), where("__name__", "==", id)));
+            if (!snap.empty) {
+                await addDoc(collection(db, "saved_workouts"), { ...snap.docs[0].data(), savedAt: Date.now() });
+                alert("통계 저장 완료!");
+            }
+        } catch(e) { alert("저장 실패"); }
+    };
 
-    window.applyPreset = (work, rest, sets, rounds) => { document.getElementById('inputWork').value = work; document.getElementById('inputRest').value = rest; document.getElementById('inputSets').value = sets; document.getElementById('inputRounds').value = rounds; updateInfo(); };
-    window.deleteOnlyPreset = async (id) => { showModal("이 설정을 삭제하시겠습니까?", async () => { await deleteDoc(doc(db, "workout_presets", id)); renderPresets(); }); };
-    window.deleteItem = async (id) => { showModal("이 기록을 삭제하시겠습니까?", async () => { await deleteDoc(doc(db, "workout_history", id)); renderHistory(); }); };
-
-    async function renderPresets() {
-        const snap = await getDocs(query(collection(db, "workout_presets"), orderBy("updatedAt", "desc"), limit(10)));
-        let html = snap.empty ? '<div style="font-size:0.9rem; color:#666; font-style:italic;">설정셋 없음</div>' : "";
-        snap.forEach(d => { const p = d.data(); html += `<div style="flex:0 0 auto; min-width:160px; background:rgba(25,25,25,0.8); border:1px solid rgba(255,255,255,0.15); padding:20px; border-radius:18px; position:relative; text-align:center;" onclick="applyPreset(${p.work}, ${p.rest}, ${p.sets}, ${p.rounds})"><b style="display:block; margin-bottom:5px;">${p.sets}세트 X ${p.rounds}라운드</b><span style="font-size:0.8rem; color:#bbb;">(${p.work}s/${p.rest}s)</span><button style="position:absolute; top:5px; right:5px; background:red; color:white; border:none; border-radius:50%; width:20px; height:20px; font-size:10px;" onclick="event.stopPropagation(); deleteOnlyPreset('${d.id}')">✕</button></div>`; });
-        document.getElementById('presetList').innerHTML = html;
-    }
+    window.applyPreset = (work, rest, sets, rounds) => { if (timerId || isPaused) return; document.getElementById('inputWork').value = work; document.getElementById('inputRest').value = rest; document.getElementById('inputSets').value = sets; document.getElementById('inputRounds').value = rounds; updateInfo(); };
+    window.deleteItem = async (id) => { if(confirm("삭제하시겠습니까?")) { await deleteDoc(doc(db, "workout_history", id)); renderHistory(); } };
 
     async function renderHistory() {
         const snap = await getDocs(query(collection(db, "workout_history"), orderBy("createdAt", "desc"), limit(20)));
-        let html = snap.empty ? '<div style="font-size:0.9rem; color:#666; font-style:italic; text-align:center;">기록 없음</div>' : '<ul style="list-style:none; padding:0; margin:0;">';
-        snap.forEach(d => { const item = d.data(); html += `<li style="background:rgba(25,25,25,0.8); border:1px solid rgba(255,255,255,0.15); padding:15px; border-radius:15px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;" onclick="applyPreset(${item.work}, ${item.rest}, ${item.sets}, ${item.rounds})"><div><span style="font-size:0.8rem; color:#aaa; display:block;">${item.date}</span><b>${item.sets}세트 X ${item.rounds}라운드</b></div><button style="color:red; background:none; border:none; font-weight:bold;" onclick="event.stopPropagation(); deleteItem('${d.id}')">삭제</button></li>`; });
-        document.getElementById('historyWrapper').innerHTML = html + (snap.empty ? "" : "</ul>");
+        let html = `<div class="history-header"><h3>최근 기록</h3><a href="stats.html" class="btn-stats-link">📊 통계 보고서</a></div>`;
+        if (snap.empty) { html += '<div class="empty-msg">기록이 없습니다.</div>'; }
+        else { 
+            snap.forEach(d => { 
+                const item = d.data(); 
+                html += `<div class="history-item">
+                    <div class="history-info" onclick="applyPreset(${item.work}, ${item.rest}, ${item.sets}, ${item.rounds})">
+                        <span class="date-text">${item.date}</span>
+                        <b>${item.sets}세트 X ${item.rounds}라운드</b>
+                        <span class="detail-text">(${item.work}초운동, ${item.rest}초휴식)</span>
+                    </div>
+                    <div class="history-btns">
+                        <button class="btn-save-text" onclick="saveToStats('${d.id}')">저장</button>
+                        <button class="btn-del-text" onclick="deleteItem('${d.id}')">삭제</button>
+                    </div>
+                </div>`; 
+            });
+        }
+        document.getElementById('historyWrapper').innerHTML = html;
     }
 
     const formatTime = (s) => `${Math.floor(Math.max(0,s)/60).toString().padStart(2,'0')}:${(Math.max(0,s)%60).toString().padStart(2,'0')}`;
     function updateInfo() { config.work = parseInt(document.getElementById('inputWork').value) || 0; config.rest = parseInt(document.getElementById('inputRest').value) || 0; config.sets = parseInt(document.getElementById('inputSets').value) || 1; config.rounds = parseInt(document.getElementById('inputRounds').value) || 1; totalRounds = config.sets * config.rounds; timeLeft = (timerId || isPaused) ? timeLeft : config.prepare; totalSecondsLeft = config.prepare + ((config.work + config.rest) * totalRounds) - config.rest; timerDisplay.innerText = timeLeft; progressDisplay.innerText = `${currentRoundTotal} / ${totalRounds} (${Math.floor(((currentRoundTotal-1)/totalRounds)*100)}%)`; totalDisplay.innerText = formatTime(totalSecondsLeft); }
 
-    async function startWorkout() { if (audioCtx.state === 'suspended') await audioCtx.resume(); playBeep(660, 0.2); toggleBtn.innerText = "⏸ PAUSE"; rightBtn.innerText = "■ STOP"; isPaused = false; document.getElementById('settingsArea').style.opacity = '0.5'; document.getElementById('settingsArea').style.pointerEvents = 'none'; runInterval(); }
+    async function startWorkout() { if (audioCtx.state === 'suspended') await audioCtx.resume(); toggleBtn.innerText = "⏸ PAUSE"; rightBtn.innerText = "■ STOP"; isPaused = false; settingsArea.style.opacity = '0.5'; settingsArea.style.pointerEvents = 'none'; runInterval(); }
     function runInterval() {
         document.body.className = `mode-${mode.toLowerCase()}`; statusDisplay.innerText = mode;
         timerId = setInterval(() => {
             timeLeft--; totalSecondsLeft--; timerDisplay.innerText = Math.max(0, timeLeft); totalDisplay.innerText = formatTime(totalSecondsLeft);
-            if (timeLeft <= 3 && timeLeft > 0) playBeep(440, 0.1);
+            if (timeLeft <= 3 && timeLeft > 0) playBeep(440, 100);
             if (timeLeft <= 0) {
-                clearInterval(timerId);
-                if (mode === 'PREPARE') { playBeep(880, 0.5); mode = 'WORK'; timeLeft = config.work; runInterval(); }
-                else if (mode === 'WORK') { if (currentRoundTotal >= totalRounds) finishWorkout(); else { playBeep(523, 0.3); mode = 'REST'; timeLeft = config.rest; runInterval(); } }
-                else { currentRoundTotal++; playBeep(880, 0.5); mode = 'WORK'; timeLeft = config.work; updateInfo(); runInterval(); }
+                playBeep(880, 500); clearInterval(timerId);
+                if (mode === 'PREPARE') { mode = 'WORK'; timeLeft = config.work; runInterval(); }
+                else if (mode === 'WORK') { if (currentRoundTotal >= totalRounds) finishWorkout(); else { mode = 'REST'; timeLeft = config.rest; runInterval(); } }
+                else { currentRoundTotal++; mode = 'WORK'; timeLeft = config.work; updateInfo(); runInterval(); }
             }
         }, 1000);
     }
-
-    function performReset() { clearInterval(timerId); timerId = null; isPaused = false; mode = 'PREPARE'; currentRoundTotal = 1; updateInfo(); toggleBtn.innerText = "▶ START"; rightBtn.innerText = "⚙︎ 운동세팅"; document.getElementById('settingsArea').style.opacity = '1'; document.getElementById('settingsArea').style.pointerEvents = 'all'; document.body.className = ''; }
+    function performReset() { clearInterval(timerId); timerId = null; isPaused = false; mode = 'PREPARE'; currentRoundTotal = 1; updateInfo(); toggleBtn.innerText = "▶ START"; rightBtn.innerText = "⚙︎ 운동세팅"; settingsArea.style.opacity = '1'; settingsArea.style.pointerEvents = 'all'; document.body.className = ''; }
     async function finishWorkout() { 
-        clearInterval(timerId); timerId = null; isPaused = false; statusDisplay.innerText = "DONE!"; 
-        const now = Date.now(); const s = { work: config.work, rest: config.rest, sets: config.sets, rounds: config.rounds };
-        await addDoc(collection(db, "workout_history"), { ...s, date: new Date().toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }), createdAt: now });
-        renderHistory(); renderPresets(); confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } }); playBeep(1200, 0.5); setTimeout(performReset, 3500); 
+        const now = Date.now();
+        await addDoc(collection(db, "workout_history"), { work: config.work, rest: config.rest, sets: config.sets, rounds: config.rounds, date: new Date().toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }), createdAt: now });
+        renderHistory(); confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } }); setTimeout(performReset, 3500); 
     }
 
     toggleBtn.addEventListener('click', () => { if (!timerId) startWorkout(); else { clearInterval(timerId); timerId = null; isPaused = true; toggleBtn.innerText = "▶ 재시작"; } });
-    rightBtn.addEventListener('click', () => { if (timerId || isPaused) showModal("운동을 중단하시겠습니까?", performReset); else { alert("설정을 완료했습니다."); addDoc(collection(db, "workout_presets"), { ...config, updatedAt: Date.now() }).then(renderPresets); } });
+    rightBtn.addEventListener('click', () => { if (timerId || isPaused) { if (confirm("중단할까요?")) performReset(); } });
     document.querySelectorAll('input').forEach(i => i.addEventListener('input', updateInfo));
-    window.onload = () => { updateInfo(); renderHistory(); renderPresets(); };
+    window.onload = () => { updateInfo(); renderHistory(); };
 </script>
 </body>
 </html>

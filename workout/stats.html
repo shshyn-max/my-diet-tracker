@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>프로 타바타 - 성장 분석 리포트</title>
+    <link rel="apple-touch-icon" href="icon.png">
+    <style>
+        :root { 
+            --work-color: #ff4757; --rest-color: #2ed573; --bg-color: #121212; 
+            --card-bg: rgba(255, 255, 255, 0.05);
+            --border-style: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        body { font-family: 'Pretendard', -apple-system, sans-serif; background-color: var(--bg-color); color: white; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        .container { width: 100%; max-width: 500px; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; width: 100%; }
+        .header h2 { margin: 0; font-size: 1.4rem; letter-spacing: -1px; }
+        .btn-back { color: #aaa; text-decoration: none; font-size: 0.85rem; border: var(--border-style); padding: 6px 12px; border-radius: 10px; }
+
+        .month-section { margin-bottom: 25px; background: rgba(255,255,255,0.02); border-radius: 20px; overflow: hidden; border: var(--border-style); }
+        
+        /* 월별 헤더 (클릭 시 접기/펴기) */
+        .month-header { padding: 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); }
+        .month-title { font-size: 1.1rem; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 8px; }
+        .toggle-icon { font-size: 0.8rem; color: #666; transition: transform 0.3s; }
+        .month-section.open .toggle-icon { transform: rotate(180deg); }
+
+        .month-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 20px 20px 20px; }
+        .month-card { background: var(--card-bg); border: var(--border-style); padding: 12px; border-radius: 12px; }
+        .month-card span { font-size: 0.65rem; color: #888; display: block; margin-bottom: 4px; }
+        .month-card b { font-size: 1.1rem; color: var(--rest-color); }
+        
+        .growth-tag { font-size: 0.6rem; font-weight: bold; padding: 2px 5px; border-radius: 4px; margin-top: 4px; display: inline-block; }
+        .growth-up { background: rgba(46, 213, 115, 0.15); color: #2ed573; }
+        .growth-down { background: rgba(255, 71, 87, 0.15); color: #ff4757; }
+        .growth-zero { background: rgba(255, 255, 255, 0.08); color: #777; }
+
+        /* 접히는 상세 리스트 영역 */
+        .month-details { display: none; padding: 0 20px 20px 20px; border-top: 1px solid rgba(255,255,255,0.05); }
+        .month-section.open .month-details { display: block; }
+
+        .saved-item { background: rgba(255,255,255,0.02); border: var(--border-style); padding: 12px 15px; border-radius: 15px; margin-top: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .saved-info b { font-size: 0.9rem; display: block; margin-bottom: 2px; }
+        .saved-info span { font-size: 0.75rem; color: #666; }
+        
+        .saved-btns { display: flex; align-items: center; gap: 10px; }
+        .time-badge { color: #2ed573; font-weight: bold; font-size: 0.8rem; }
+        .btn-del-text { color: #ff4757; background: none; border: none; font-size: 0.8rem; font-weight: bold; cursor: pointer; padding: 0; }
+        
+        .empty-state { text-align: center; color: #555; padding: 50px 0; font-style: italic; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h2>📈 성장 분석 리포트</h2>
+        <a href="index.html" class="btn-back">이전으로</a>
+    </div>
+
+    <div id="statsContent">
+        <div class="empty-state">데이터를 분석하는 중...</div>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, getDocs, query, orderBy, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    const firebaseConfig = { apiKey: "AIzaSyBAwk8ms_RHgV3I4eVBnWqMKc7UBwk3vm8", authDomain: "my-tabata-web.firebaseapp.com", projectId: "my-tabata-web", storageBucket: "my-tabata-web.firebasestorage.app", messagingSenderId: "154823281802", appId: "1:154823281802:web:21e51b45843e7e4cb3f173" };
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    window.toggleMonth = (header) => {
+        header.parentElement.classList.toggle('open');
+    };
+
+    window.deleteSavedItem = async (id) => {
+        if(confirm("기록을 삭제하시겠습니까?")) {
+            await deleteDoc(doc(db, "saved_workouts", id));
+            loadStats();
+        }
+    };
+
+    function getGrowthTag(current, previous) {
+        if (!previous || previous === 0) return '<div class="growth-tag growth-zero">비교대상 없음</div>';
+        const rate = ((current - previous) / previous * 100).toFixed(1);
+        if (rate > 0) return `<div class="growth-tag growth-up">▲ ${rate}% 성장</div>`;
+        if (rate < 0) return `<div class="growth-tag growth-down">▼ ${Math.abs(rate)}% 하락</div>`;
+        return '<div class="growth-tag growth-zero">변동 없음</div>';
+    }
+
+    async function loadStats() {
+        const snap = await getDocs(query(collection(db, "saved_workouts"), orderBy("savedAt", "asc")));
+        const statsContent = document.getElementById('statsContent');
+        
+        if (snap.empty) {
+            statsContent.innerHTML = '<div class="empty-state">저장된 기록이 없습니다.</div>';
+            return;
+        }
+
+        const monthlyData = {};
+        const monthsOrdered = [];
+
+        snap.forEach(d => {
+            const item = d.data();
+            const dateObj = new Date(item.savedAt);
+            const monthKey = `${dateObj.getFullYear()}년 ${dateObj.getMonth() + 1}월`;
+            const workoutTime = (item.work + item.rest) * (item.sets * item.rounds);
+
+            if (!monthlyData[monthKey]) {
+                monthlyData[monthKey] = { sessions: 0, totalSeconds: 0, items: [] };
+                monthsOrdered.push(monthKey);
+            }
+
+            monthlyData[monthKey].sessions += 1;
+            monthlyData[monthKey].totalSeconds += workoutTime;
+            monthlyData[monthKey].items.unshift({ id: d.id, ...item, workoutTime });
+        });
+
+        monthsOrdered.reverse();
+
+        let finalHtml = "";
+        monthsOrdered.forEach((month, index) => {
+            const data = monthlyData[month];
+            const prevMonthKey = monthsOrdered[index + 1];
+            const prevData = prevMonthKey ? monthlyData[prevMonthKey] : null;
+            
+            // 첫 번째 달(최신 달)만 펼쳐진 상태로 시작
+            const isOpen = index === 0 ? "open" : "";
+
+            finalHtml += `
+                <div class="month-section ${isOpen}">
+                    <div class="month-header" onclick="toggleMonth(this)">
+                        <div class="month-title">${month}</div>
+                        <div class="toggle-icon">▼</div>
+                    </div>
+                    <div class="month-summary">
+                        <div class="month-card">
+                            <span>한 달 운동 시간</span>
+                            <b>${Math.floor(data.totalSeconds / 60)}분</b>
+                            ${getGrowthTag(data.totalSeconds, prevData?.totalSeconds)}
+                        </div>
+                        <div class="month-card">
+                            <span>한 달 운동 횟수</span>
+                            <b>${data.sessions}회</b>
+                            ${getGrowthTag(data.sessions, prevData?.sessions)}
+                        </div>
+                    </div>
+                    <div class="month-details">
+                        ${data.items.map(i => `
+                            <div class="saved-item">
+                                <div class="saved-info">
+                                    <b>${i.sets}세트 X ${i.rounds}라운드</b>
+                                    <span>${i.date}</span>
+                                </div>
+                                <div class="saved-btns">
+                                    <span class="time-badge">+${Math.floor(i.workoutTime/60)}분</span>
+                                    <button class="btn-del-text" onclick="deleteSavedItem('${i.id}')">삭제</button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        });
+        statsContent.innerHTML = finalHtml;
+    }
+
+    window.onload = loadStats;
+</script>
+</body>
+</html>
