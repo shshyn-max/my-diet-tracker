@@ -9,7 +9,7 @@
         :root { 
             --work-color: #ff4757; --rest-color: #2ed573; --bg-color: #121212; 
             --card-bg: rgba(255, 255, 255, 0.05);
-            --border-style: 1px solid rgba(255, 255, 255, 0.1);
+            --border-style: 1px solid rgba(255, 255, 255, 0.15);
         }
         body { font-family: 'Pretendard', -apple-system, sans-serif; background-color: var(--bg-color); color: white; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
         .container { width: 100%; max-width: 500px; }
@@ -20,7 +20,6 @@
 
         .month-section { margin-bottom: 25px; background: rgba(255,255,255,0.02); border-radius: 20px; overflow: hidden; border: var(--border-style); }
         
-        /* 월별 헤더 (클릭 시 접기/펴기) */
         .month-header { padding: 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); }
         .month-title { font-size: 1.1rem; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 8px; }
         .toggle-icon { font-size: 0.8rem; color: #666; transition: transform 0.3s; }
@@ -36,7 +35,6 @@
         .growth-down { background: rgba(255, 71, 87, 0.15); color: #ff4757; }
         .growth-zero { background: rgba(255, 255, 255, 0.08); color: #777; }
 
-        /* 접히는 상세 리스트 영역 */
         .month-details { display: none; padding: 0 20px 20px 20px; border-top: 1px solid rgba(255,255,255,0.05); }
         .month-section.open .month-details { display: block; }
 
@@ -71,9 +69,7 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    window.toggleMonth = (header) => {
-        header.parentElement.classList.toggle('open');
-    };
+    window.toggleMonth = (header) => { header.parentElement.classList.toggle('open'); };
 
     window.deleteSavedItem = async (id) => {
         if(confirm("기록을 삭제하시겠습니까?")) {
@@ -101,9 +97,16 @@
 
         const monthlyData = {};
         const monthsOrdered = [];
+        const seenItems = new Set(); // 중복 체크용 셋
 
         snap.forEach(d => {
             const item = d.data();
+            
+            // 핵심 로직: 동일한 운동 세팅과 생성 시간을 가진 데이터는 하나만 취급 (중복 방지)
+            const uniqueKey = `${item.createdAt}_${item.sets}_${item.rounds}`;
+            if (seenItems.has(uniqueKey)) return; 
+            seenItems.add(uniqueKey);
+
             const dateObj = new Date(item.savedAt);
             const monthKey = `${dateObj.getFullYear()}년 ${dateObj.getMonth() + 1}월`;
             const workoutTime = (item.work + item.rest) * (item.sets * item.rounds);
@@ -125,8 +128,6 @@
             const data = monthlyData[month];
             const prevMonthKey = monthsOrdered[index + 1];
             const prevData = prevMonthKey ? monthlyData[prevMonthKey] : null;
-            
-            // 첫 번째 달(최신 달)만 펼쳐진 상태로 시작
             const isOpen = index === 0 ? "open" : "";
 
             finalHtml += `
@@ -136,16 +137,8 @@
                         <div class="toggle-icon">▼</div>
                     </div>
                     <div class="month-summary">
-                        <div class="month-card">
-                            <span>한 달 운동 시간</span>
-                            <b>${Math.floor(data.totalSeconds / 60)}분</b>
-                            ${getGrowthTag(data.totalSeconds, prevData?.totalSeconds)}
-                        </div>
-                        <div class="month-card">
-                            <span>한 달 운동 횟수</span>
-                            <b>${data.sessions}회</b>
-                            ${getGrowthTag(data.sessions, prevData?.sessions)}
-                        </div>
+                        <div class="month-card"><span>한 달 운동 시간</span><b>${Math.floor(data.totalSeconds / 60)}분</b>${getGrowthTag(data.totalSeconds, prevData?.totalSeconds)}</div>
+                        <div class="month-card"><span>한 달 운동 횟수</span><b>${data.sessions}회</b>${getGrowthTag(data.sessions, prevData?.sessions)}</div>
                     </div>
                     <div class="month-details">
                         ${data.items.map(i => `
@@ -158,11 +151,9 @@
                                     <span class="time-badge">+${Math.floor(i.workoutTime/60)}분</span>
                                     <button class="btn-del-text" onclick="deleteSavedItem('${i.id}')">삭제</button>
                                 </div>
-                            </div>
-                        `).join('')}
+                            </div>`).join('')}
                     </div>
-                </div>
-            `;
+                </div>`;
         });
         statsContent.innerHTML = finalHtml;
     }

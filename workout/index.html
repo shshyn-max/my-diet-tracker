@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>프로 타바타 v8.8.1</title>
+    <title>프로 타바타 v8.8.4</title>
     <link rel="apple-touch-icon" href="icon.png">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
@@ -19,7 +19,6 @@
         @media (min-width: 900px) and (orientation: landscape) { .main-layout { flex-direction: row; align-items: flex-start; justify-content: center; gap: 40px; padding-top: 40px; } .timer-section { flex: 1.2; position: sticky; top: 40px; } .data-section { flex: 1; max-width: 450px; } }
         .container { width: 100%; text-align: center; }
         
-        /* 타이머 설정 영역 */
         .settings { background: rgba(0, 0, 0, 0.75); padding: 18px; border-radius: 20px; margin-bottom: 20px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; border: var(--border-style); align-items: end; }
         .settings label { font-size: 0.7rem; font-weight: bold; margin-bottom: 6px; display: block; color: #ccc; }
         .settings input { width: 100%; max-width: 75px; background: var(--input-bg); border: none; color: #000; height: 45px; padding: 0; border-radius: 10px; text-align: center; font-size: 16px; font-weight: 900; margin: 0 auto; -webkit-appearance: none; outline: none; box-sizing: border-box; }
@@ -37,12 +36,10 @@
         .btn-toggle, .btn-right { background: #fff; color: #000; font-size: 1.1rem; }
         .btn-right { border: var(--border-style); }
 
-        /* 최근 기록 헤더 영역 */
         .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; }
         .history-header h3 { margin: 0; font-size: 1.1rem; color: #eee; }
         .btn-stats-link { color: #aaa; text-decoration: none; font-size: 0.8rem; border: 1px solid rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 8px; }
 
-        /* 최근 기록 카드 및 버튼 간격 최적화 */
         .history-item { background: var(--card-bg); border: var(--border-style); padding: 15px 18px; border-radius: 18px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
         .history-info { flex: 1; cursor: pointer; text-align: left; }
         .date-text { font-size: 0.85rem; color: #aaa; display: block; margin-bottom: 6px; }
@@ -51,6 +48,7 @@
         
         .history-btns { display: flex; flex-direction: row; gap: 15px; align-items: center; padding-left: 10px; }
         .btn-save-text { color: #2ed573; background: none; border: none; font-size: 0.85rem; font-weight: bold; padding: 0; cursor: pointer; white-space: nowrap; }
+        .btn-save-text.disabled { color: #555; cursor: default; pointer-events: none; }
         .btn-del-text { color: #ff4757; background: none; border: none; font-size: 0.85rem; font-weight: bold; padding: 0; cursor: pointer; white-space: nowrap; }
         
         .empty-msg { width: 100%; font-size: 0.9rem; color: #666; padding: 20px 0; text-align: center; }
@@ -100,12 +98,16 @@
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     function playBeep(f, d) { const o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.connect(g); g.connect(audioCtx.destination); o.frequency.value = f; o.start(); setTimeout(() => o.stop(), d); }
 
-    window.saveToStats = async (id) => {
+    window.saveToStats = async (btn, id, createdAt) => {
         if(!confirm("이 기록을 통계 데이터로 저장하시겠습니까?")) return;
         try {
             const snap = await getDocs(query(collection(db, "workout_history"), where("__name__", "==", id)));
             if (!snap.empty) {
-                await addDoc(collection(db, "saved_workouts"), { ...snap.docs[0].data(), savedAt: Date.now() });
+                const data = snap.docs[0].data();
+                await addDoc(collection(db, "saved_workouts"), { ...data, savedAt: Date.now(), originalId: id }); // originalId 추가
+                
+                btn.innerText = "저장완료";
+                btn.classList.add('disabled');
                 alert("통계 저장 완료!");
             }
         } catch(e) { alert("저장 실패"); }
@@ -115,12 +117,27 @@
     window.deleteItem = async (id) => { if(confirm("삭제하시겠습니까?")) { await deleteDoc(doc(db, "workout_history", id)); renderHistory(); } };
 
     async function renderHistory() {
-        const snap = await getDocs(query(collection(db, "workout_history"), orderBy("createdAt", "desc"), limit(20)));
+        // 1. 최근 기록 20개 가져오기
+        const historySnap = await getDocs(query(collection(db, "workout_history"), orderBy("createdAt", "desc"), limit(20)));
+        
+        // 2. 이미 통계에 저장된 원본 ID들 가져오기 (중복 체크용)
+        const savedSnap = await getDocs(collection(db, "saved_workouts"));
+        const savedIds = new Set();
+        savedSnap.forEach(d => {
+            const data = d.data();
+            // createdAt와 세팅값이 같으면 저장된 것으로 간주
+            if(data.createdAt) savedIds.add(`${data.createdAt}_${data.sets}_${data.rounds}`);
+        });
+
         let html = `<div class="history-header"><h3>최근 기록</h3><a href="stats.html" class="btn-stats-link">📊 통계 보고서</a></div>`;
-        if (snap.empty) { html += '<div class="empty-msg">기록이 없습니다.</div>'; }
+        
+        if (historySnap.empty) { html += '<div class="empty-msg">기록이 없습니다.</div>'; }
         else { 
-            snap.forEach(d => { 
+            historySnap.forEach(d => { 
                 const item = d.data(); 
+                const uniqueKey = `${item.createdAt}_${item.sets}_${item.rounds}`;
+                const isSaved = savedIds.has(uniqueKey);
+                
                 html += `<div class="history-item">
                     <div class="history-info" onclick="applyPreset(${item.work}, ${item.rest}, ${item.sets}, ${item.rounds})">
                         <span class="date-text">${item.date}</span>
@@ -128,7 +145,10 @@
                         <span class="detail-text">(${item.work}초운동, ${item.rest}초휴식)</span>
                     </div>
                     <div class="history-btns">
-                        <button class="btn-save-text" onclick="saveToStats('${d.id}')">저장</button>
+                        <button class="btn-save-text ${isSaved ? 'disabled' : ''}" 
+                                onclick="saveToStats(this, '${d.id}', ${item.createdAt})">
+                            ${isSaved ? '저장완료' : '저장'}
+                        </button>
                         <button class="btn-del-text" onclick="deleteItem('${d.id}')">삭제</button>
                     </div>
                 </div>`; 
