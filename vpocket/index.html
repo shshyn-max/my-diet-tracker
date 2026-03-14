@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MY 상품권 관리</title>
+    
+    <link rel="icon" type="image/svg+xml" href="icon.svg">
+    <link rel="apple-touch-icon" href="icon.svg">
+    <meta name="theme-color" content="#000000">
+
+    <style>
+        :root {
+            --primary: #4a90e2;
+            --urgent: #ff4757;
+            --bg: #000000;
+            --container-bg: #111111;
+            --text-light: #ffffff;
+            --sub-text: #747d8c;
+            --border: #2f3542;
+            --input-bg: #1a1a1a;
+            --add-btn-bg: #1e272e;
+            --category-bg: #e1f5fe;
+            --category-text: #0288d1;
+        }
+
+        body {
+            font-family: -apple-system, system-ui, sans-serif;
+            background-color: var(--bg); color: var(--text-light);
+            margin: 0; padding: 20px; display: flex; justify-content: center; min-height: 100vh;
+        }
+
+        .container {
+            width: 100%; max-width: 480px; background-color: var(--container-bg);
+            padding: 25px; border-radius: 24px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .main-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        .main-header h2 { margin: 0; font-size: 1.5rem; font-weight: 700; cursor: pointer; }
+        .btn-archive-link { background: #2d3436; color: #dfe6e9; border: 1px solid var(--border); padding: 6px 12px; border-radius: 10px; font-size: 0.75rem; cursor: pointer; font-weight: 600; }
+
+        h3 { color: var(--text-light); letter-spacing: -0.5px; margin-top: 0; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.85rem; color: var(--sub-text); }
+        
+        input, select {
+            width: 100%; padding: 14px; margin-bottom: 15px; border-radius: 12px; border: 1px solid var(--border);
+            box-sizing: border-box; background-color: var(--input-bg); color: var(--text-light); font-size: 1rem; color-scheme: dark;
+        }
+
+        input[type="file"] { text-align: right; border: none; background: transparent; color: var(--sub-text); padding: 10px 0; }
+        input[type="file"]::-webkit-file-upload-button {
+            float: right; margin-left: 10px; padding: 8px 16px; border-radius: 8px;
+            border: 1px solid var(--border); background-color: var(--input-bg); color: var(--text-light); font-weight: bold; cursor: pointer;
+        }
+
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="white" viewBox="0 0 16 16"><path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1z"/></svg>');
+            cursor: pointer;
+        }
+
+        .btn-white { width: 100%; padding: 14px; margin-bottom: 10px; border-radius: 12px; border: none; font-size: 1rem; font-weight: bold; cursor: pointer; background-color: #ffffff; color: #000000; }
+        .btn-add-voucher {
+            width: 100%; padding: 16px; margin-top: 10px; border-radius: 18px; border: 1px dashed #57606f;
+            background-color: var(--add-btn-bg); color: #ffffff; font-size: 1rem; font-weight: 600; cursor: pointer;
+        }
+
+        /* 📋 목록 카드 및 텍스트 블랙 강제 설정 */
+        .list-card { background: #ffffff !important; padding: 18px; border-radius: 18px; margin-bottom: 18px; display: flex; flex-direction: column; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        .card-black-text { color: #000000 !important; }
+        .category-tag { font-size: 0.65rem; background: var(--category-bg); color: var(--category-text); padding: 2px 8px; border-radius: 6px; font-weight: 700; border: 1px solid #b3e5fc; }
+        
+        .list-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; width: 100%; }
+        .info-left-group { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+        .list-info-top { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+        .title-row { display: flex; align-items: center; gap: 8px; width: 100%; flex-wrap: wrap; }
+        .title-actions { display: flex; gap: 4px; margin-top: 2px; }
+        .btn-mini { background: #f1f2f6; border: 1px solid #dcdde1; color: #2f3542; padding: 2px 7px; border-radius: 4px; font-size: 0.65rem; cursor: pointer; font-weight: 600; }
+        .btn-mini.done { background: #e8f5e9; color: #2e7d32; border-color: #c8e6c9; }
+
+        /* 사용내역 펼침 박스 */
+        .list-history-box { background: #f8f9fa; border-radius: 10px; padding: 10px; margin: 8px 0 12px 0; font-size: 0.8rem; color: #57606f; }
+        .history-summary { display: flex; justify-content: space-between; font-weight: 600; }
+        .history-full { border-top: 1px solid #e1e4e8; margin-top: 8px; padding-top: 8px; }
+        .history-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid #f1f2f6; }
+        .history-row:last-child { border-bottom: none; }
+        .btn-history-mini { background: none; border: none; color: #a4b0be; cursor: pointer; font-size: 0.7rem; padding: 2px 4px; font-weight: 500; }
+        .btn-expand { background: none; border: none; color: var(--primary); font-size: 0.75rem; cursor: pointer; padding: 5px 0; font-weight: bold; width: 100%; text-align: center; }
+
+        .list-actions-bottom { display: flex; gap: 8px; border-top: 1px solid #f1f2f6; padding-top: 12px; }
+        .btn-bottom { flex: 1; padding: 11px; border-radius: 10px; border: none; font-size: 0.85rem; font-weight: 700; cursor: pointer; }
+        .btn-view { background: #f1f2f6; color: #2f3542; }
+        .btn-input { background: var(--primary); color: #ffffff; }
+
+        /* 헤더 공통 레이아웃 */
+        .header-relative { position: relative; display: flex; justify-content: center; align-items: center; margin-bottom: 30px; min-height: 35px; }
+        .btn-nav-right {
+            position: absolute; right: 0; background: rgba(255,255,255,0.1); color: white;
+            border: 1px solid rgba(255,255,255,0.2); padding: 6px 15px; border-radius: 20px;
+            font-size: 13px; font-weight: bold; cursor: pointer; backdrop-filter: blur(5px);
+        }
+        
+        @keyframes blink { 50% { opacity: 0.4; } }
+        .hidden { display: none !important; }
+        .archive-card { opacity: 0.8; filter: grayscale(0.3); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="view-list">
+        <div class="main-header">
+            <h2 onclick="location.reload()">MY 상품권 관리</h2>
+            <button class="btn-archive-link" onclick="showView('view-archive')">완료내역</button>
+        </div>
+        <div id="voucher-container"></div>
+        <button class="btn-add-voucher" onclick="showAddView()">+ 새 상품권 등록</button>
+    </div>
+
+    <div id="view-archive" class="hidden">
+        <div class="header-relative">
+            <h3>사용완료내역</h3>
+            <button class="btn-nav-right" onclick="showView('view-list')">목록으로 ✕</button>
+        </div>
+        <div id="archive-container"></div>
+    </div>
+
+    <div id="view-form" class="hidden">
+        <div class="header-relative">
+            <h3 id="form-title">상품권 등록</h3>
+            <button class="btn-nav-right" onclick="showView('view-list')">취소 ✕</button>
+        </div>
+        <label>상품권 이름</label>
+        <input type="text" id="vName" placeholder="예: 스타벅스 5만원권">
+        <label>카테고리</label>
+        <select id="vCategory">
+            <option value="기타">카테고리 선택</option>
+            <option value="커피">커피</option><option value="주유">주유</option><option value="외식">외식</option>
+            <option value="쇼핑">쇼핑</option><option value="편의점">편의점</option><option value="생활샵">생활샵</option>
+            <option value="페이포인트">페이포인트</option>
+        </select>
+        <label>이미지</label>
+        <div id="imgEditBlock" class="hidden" style="display:flex; align-items:center; margin-bottom: 15px;">
+            <img id="vImgPreview" style="width:60px; height:60px; border-radius:8px; margin-right:15px; object-fit:cover; border:1px solid var(--border);">
+            <span style="font-size:0.8rem; color:var(--sub-text);">이미지 변경 시 우측 선택</span>
+        </div>
+        <input type="file" id="vImg" accept="image/*">
+        <label>전체 금액 (원)</label>
+        <input type="number" id="vTotal" placeholder="금액 입력" inputmode="numeric">
+        <label>유효기간</label>
+        <input type="date" id="vExpiry">
+        <button class="btn-white" id="btnSaveVoucher" style="margin-top:10px;">저장하기</button>
+    </div>
+
+    <div id="view-detail" class="hidden">
+        <div class="header-relative">
+            <h3 id="detailHeaderTitle">사용내역 입력</h3>
+            <button class="btn-nav-right" onclick="showView('view-list')">목록으로 ✕</button>
+        </div>
+        <div class="usage-form" style="padding-top: 10px;">
+            <label>사용날짜</label>
+            <input type="date" id="useDate">
+            <label>금액입력</label>
+            <input type="number" id="useAmount" placeholder="금액을 입력해 주세요" inputmode="numeric">
+            <button class="btn-white" id="btnAddHistory" style="margin-top: 20px;">기록 저장</button>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyAlMx_uSh9FuB1gbZj3DzB1u1qX6kKnSuw", authDomain: "voucher-pocket.firebaseapp.com",
+        projectId: "voucher-pocket", storageBucket: "voucher-pocket.firebasestorage.app",
+        messagingSenderId: "789053008764", appId: "1:789053008764:web:49070106255927785f92f9"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const DOC_REF = doc(db, "vouchers", "v3_data"); 
+
+    let dbData = { vouchers: [] };
+    let currentVoucherIdx = null;
+    let currentHistoryIdx = null;
+    let isEditMode = false;
+
+    window.showView = (viewId) => {
+        document.querySelectorAll('.container > div').forEach(el => el.classList.add('hidden'));
+        document.getElementById(viewId).classList.remove('hidden');
+        if(viewId === 'view-list') renderList();
+        if(viewId === 'view-archive') renderArchive();
+    };
+
+    async function init() {
+        const snap = await getDoc(DOC_REF);
+        if (snap.exists()) dbData = snap.data();
+        renderList();
+    }
+
+    function renderList() {
+        const container = document.getElementById('voucher-container');
+        const activeVouchers = dbData.vouchers.filter(v => !v.isDone);
+        if (activeVouchers.length === 0) {
+            container.innerHTML = `<p style="text-align:center; color:var(--sub-text); margin-top:40px;">사용 가능한 상품권이 없습니다.</p>`;
+            return;
+        }
+        const sorted = activeVouchers
+            .map(v => ({ ...v, originalIdx: dbData.vouchers.indexOf(v) }))
+            .sort((a, b) => new Date(a.expiry) - new Date(b.expiry));
+        container.innerHTML = sorted.map(v => generateCardHtml(v, false)).join('');
+    }
+
+    function renderArchive() {
+        const container = document.getElementById('archive-container');
+        const doneVouchers = dbData.vouchers.filter(v => v.isDone);
+        if (doneVouchers.length === 0) {
+            container.innerHTML = `<p style="text-align:center; color:var(--sub-text); margin-top:40px;">완료된 내역이 없습니다.</p>`;
+            return;
+        }
+        const sorted = doneVouchers
+            .map(v => ({ ...v, originalIdx: dbData.vouchers.indexOf(v) }))
+            .sort((a, b) => new Date(a.expiry) - new Date(b.expiry));
+        container.innerHTML = sorted.map(v => generateCardHtml(v, true)).join('');
+    }
+
+    function generateCardHtml(v, isArchive) {
+        const realIdx = v.originalIdx;
+        const history = v.history || [];
+        const used = history.reduce((s, h) => s + h.amount, 0);
+        const balance = v.total - used;
+        const { text, isUrgent } = getDdayInfo(v.expiry);
+        const sortedHistory = [...history].sort((a, b) => new Date(b.date) - new Date(a.date));
+        const latest = sortedHistory.length > 0 ? sortedHistory[0] : null;
+        const isExpanded = localStorage.getItem('expandedVoucherId') === String(realIdx);
+
+        return `
+            <div class="list-card ${isArchive ? 'archive-card' : ''}">
+                <div class="list-header">
+                    <div class="info-left-group">
+                        <div class="list-info-top">
+                            <div class="title-row">
+                                <span class="category-tag">${v.category || '기타'}</span>
+                                <h3 class="card-black-text" style="margin:0; font-size:1.1rem; font-weight:700;">${v.name || '상품권'}</h3>
+                            </div>
+                            <div class="title-actions">
+                                <button class="btn-mini" onclick="quickEdit(${realIdx})">편집</button>
+                                <button class="btn-mini del" onclick="quickDelete(${realIdx})">삭제</button>
+                                ${!isArchive ? `<button class="btn-mini done" onclick="markAsDone(${realIdx})">사용완료</button>` : `<button class="btn-mini" onclick="markAsActive(${realIdx})">복원</button>`}
+                            </div>
+                        </div>
+                        <div class="card-black-text" style="font-size:1.2rem; font-weight:800; margin-top:4px;">${balance.toLocaleString()}원</div>
+                    </div>
+                    <div style="text-align:right; flex-shrink:0;">
+                        <span style="font-weight:800; font-size:1.1rem; color:${isUrgent ? 'var(--urgent)' : 'var(--primary)'}; ${isUrgent ? 'animation: blink 1.2s infinite;' : ''}">${text}</span>
+                    </div>
+                </div>
+                
+                <div class="list-history-box">
+                    ${latest ? `
+                        <div class="history-summary">
+                            <span>최근: ${latest.date}</span>
+                            <span>-${latest.amount.toLocaleString()}원</span>
+                        </div>
+                        <div id="full-history-${realIdx}" class="${isExpanded ? '' : 'hidden'} history-full">
+                            ${sortedHistory.map((h) => {
+                                const origHIdx = dbData.vouchers[realIdx].history.findIndex(item => item === h);
+                                return `
+                                <div class="history-row">
+                                    <div style="flex:1;"><span>${h.date}</span> <strong style="margin-left:5px;">-${h.amount.toLocaleString()}원</strong></div>
+                                    <div class="history-actions">
+                                        <button class="btn-history-mini" onclick="editHistory(${realIdx}, ${origHIdx})">편집</button>
+                                        <button class="btn-history-mini del" onclick="deleteHistory(${realIdx}, ${origHIdx})">삭제</button>
+                                    </div>
+                                </div>`;
+                            }).join('')}
+                        </div>
+                        <button class="btn-expand" onclick="toggleHistory(event, ${realIdx})">${isExpanded ? "내역 접기 ▲" : "내역 펼치기 ▼"}</button>
+                    ` : '<div style="color:#cbd5e0; text-align:center; font-size:0.75rem;">사용 내역 없음</div>'}
+                </div>
+
+                <div class="list-actions-bottom">
+                    <button class="btn-bottom btn-view" onclick="openVoucherImg(${realIdx})">상품권 보기</button>
+                    <button class="btn-bottom btn-input" onclick="showDetail(${realIdx})">사용내역 입력</button>
+                </div>
+            </div>
+        `;
+    }
+
+    window.markAsDone = async (idx) => {
+        if(!confirm("이 상품권을 사용완료 처리할까요?")) return;
+        dbData.vouchers[idx].isDone = true;
+        await setDoc(DOC_REF, dbData);
+        renderList();
+    };
+
+    window.markAsActive = async (idx) => {
+        dbData.vouchers[idx].isDone = false;
+        await setDoc(DOC_REF, dbData);
+        renderArchive();
+    };
+
+    window.toggleHistory = (e, idx) => {
+        e.stopPropagation();
+        const full = document.getElementById(`full-history-${idx}`);
+        const btn = e.target;
+        if(full.classList.contains('hidden')) {
+            full.classList.remove('hidden'); btn.innerText = "내역 접기 ▲";
+            localStorage.setItem('expandedVoucherId', idx);
+        } else {
+            full.classList.add('hidden'); btn.innerText = "내역 펼치기 ▼";
+            localStorage.removeItem('expandedVoucherId');
+        }
+    };
+
+    window.editHistory = (vIdx, hIdx) => {
+        currentVoucherIdx = vIdx; currentHistoryIdx = hIdx;
+        const h = dbData.vouchers[vIdx].history[hIdx];
+        localStorage.setItem('expandedVoucherId', vIdx);
+        document.getElementById('detailHeaderTitle').innerText = "내역 수정";
+        document.getElementById('useDate').value = h.date;
+        document.getElementById('useAmount').value = h.amount;
+        showView('view-detail');
+    };
+
+    window.deleteHistory = async (vIdx, hIdx) => {
+        if(!confirm("이 사용 내역을 삭제할까요?")) return;
+        localStorage.setItem('expandedVoucherId', vIdx);
+        dbData.vouchers[vIdx].history.splice(hIdx, 1);
+        await setDoc(DOC_REF, dbData);
+        dbData.vouchers[vIdx].isDone ? renderArchive() : renderList();
+    };
+
+    function getDdayInfo(dateStr) {
+        if(!dateStr) return { text: "정보없음", isUrgent: false };
+        const today = new Date(); today.setHours(0,0,0,0);
+        const exp = new Date(dateStr);
+        const diff = Math.ceil((exp - today) / (1000*60*60*24));
+        if (diff < 0) return { text: "만료", isUrgent: true };
+        return { text: `D-${diff}`, isUrgent: diff <= 7 };
+    }
+
+    window.openVoucherImg = (idx) => {
+        const v = dbData.vouchers[idx];
+        const w = window.open("");
+        w.document.write(`<html><head><title>상품권 보기</title><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>
+            body { margin:0; background:#000; display:flex; justify-content:center; align-items:center; min-height:100vh; overflow:hidden; font-family:sans-serif; }
+            img { max-width:100%; max-height:100vh; object-fit: contain; cursor: pointer; }
+            .close-btn { position: fixed; top: 20px; right: 20px; background: rgba(0,0,0,0.6); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 30px; font-weight: bold; cursor: pointer; backdrop-filter: blur(5px); }
+        </style></head>
+        <body><button class="close-btn" onclick="window.close()">닫기 ✕</button><img src="${v.img}" onclick="window.close()"></body></html>`);
+    };
+
+    window.quickEdit = (idx) => {
+        currentVoucherIdx = idx; const v = dbData.vouchers[idx]; isEditMode = true;
+        document.getElementById('form-title').innerText = "상품권 편집";
+        document.getElementById('vName').value = v.name || '';
+        document.getElementById('vCategory').value = v.category || '기타';
+        document.getElementById('vTotal').value = v.total;
+        document.getElementById('vExpiry').value = v.expiry;
+        document.getElementById('vImgPreview').src = v.img;
+        document.getElementById('imgEditBlock').classList.remove('hidden');
+        showView('view-form');
+    };
+
+    window.quickDelete = async (idx) => {
+        if(!confirm("이 상품권을 영구 삭제할까요?")) return;
+        dbData.vouchers.splice(idx, 1); await setDoc(DOC_REF, dbData); 
+        renderList(); renderArchive();
+    };
+
+    window.showDetail = (idx) => {
+        currentVoucherIdx = idx; currentHistoryIdx = null;
+        localStorage.setItem('expandedVoucherId', idx);
+        const v = dbData.vouchers[idx];
+        document.getElementById('detailHeaderTitle').innerText = (v.name || '상품권');
+        document.getElementById('useDate').valueAsDate = new Date();
+        document.getElementById('useAmount').value = '';
+        showView('view-detail');
+    };
+
+    document.getElementById('btnAddHistory').onclick = async () => {
+        const date = document.getElementById('useDate').value;
+        const amount = parseInt(document.getElementById('useAmount').value);
+        if(!date || isNaN(amount)) return alert("날짜와 금액을 입력해 주세요.");
+        const history = dbData.vouchers[currentVoucherIdx].history || [];
+        if (currentHistoryIdx !== null) history[currentHistoryIdx] = { date, amount };
+        else history.push({ date, amount });
+        dbData.vouchers[currentVoucherIdx].history = history;
+        await setDoc(DOC_REF, dbData); currentHistoryIdx = null;
+        dbData.vouchers[currentVoucherIdx].isDone ? showView('view-archive') : showView('view-list');
+    };
+
+    document.getElementById('btnSaveVoucher').onclick = async () => {
+        const name = document.getElementById('vName').value;
+        const category = document.getElementById('vCategory').value;
+        const total = parseInt(document.getElementById('vTotal').value);
+        const expiry = document.getElementById('vExpiry').value;
+        const file = document.getElementById('vImg').files[0];
+        if(!name || isNaN(total) || !expiry) return alert("필수 정보를 입력해주세요.");
+        const save = async (img) => {
+            if (isEditMode) {
+                const v = dbData.vouchers[currentVoucherIdx];
+                v.name = name; v.category = category; v.total = total; v.expiry = expiry; if(img) v.img = img;
+            } else {
+                if(!img) return alert("이미지를 선택해주세요.");
+                dbData.vouchers.push({ name, category, img, total, expiry, history: [], isDone: false });
+            }
+            await setDoc(DOC_REF, dbData); showView('view-list');
+        };
+        if (file) { const reader = new FileReader(); reader.onload = (e) => save(e.target.result); reader.readAsDataURL(file); }
+        else { await save(null); }
+    };
+
+    window.showAddView = () => { isEditMode = false; document.getElementById('form-title').innerText = "상품권 등록"; document.getElementById('vCategory').value = "기타"; document.getElementById('imgEditBlock').classList.add('hidden'); clearForm(); showView('view-form'); };
+    function clearForm() { document.getElementById('vName').value = ''; document.getElementById('vImg').value = ''; document.getElementById('vTotal').value = ''; document.getElementById('vExpiry').value = ''; }
+
+    init();
+</script>
+</body>
+</html>
