@@ -231,20 +231,59 @@ window.saveVoucher = async () => {
     const category = document.getElementById('vCategory').value;
     const total = parseInt(document.getElementById('vTotal').value);
     const expiry = document.getElementById('vExpiry').value;
-    const file = document.getElementById('vImg').files[0];
-    if(!name || isNaN(total) || !expiry) return alert("필수 정보를 입력해주세요.");
-    const save = async (img) => {
-        if (isEditMode) {
-            const v = dbData.vouchers[currentVoucherIdx];
-            v.name = name; v.category = category; v.total = total; v.expiry = expiry; if(img) v.img = img;
-        } else {
-            if(!img) return alert("이미지를 선택해주세요.");
-            dbData.vouchers.push({ name, category, img, total, expiry, history: [], isDone: false });
+    const fileInput = document.getElementById('vImg');
+    const file = fileInput.files[0];
+
+    // 1. 필수 입력값 검증
+    if(!name || isNaN(total) || !expiry) {
+        alert("필수 정보를 입력해주세요.");
+        return;
+    }
+
+    // 2. 신규 등록 시 이미지 필수 체크
+    if (!isEditMode && !file) {
+        alert("이미지를 선택해주세요.");
+        return;
+    }
+
+    // 3. 실제 DB 저장을 담당하는 내부 함수
+    const performSave = async (imageData) => {
+        try {
+            if (isEditMode) {
+                const v = dbData.vouchers[currentVoucherIdx];
+                v.name = name;
+                v.category = category;
+                v.total = total;
+                v.expiry = expiry;
+                if (imageData) v.img = imageData; // 새 이미지가 있을 때만 교체
+            } else {
+                dbData.vouchers.push({
+                    name, category, img: imageData, total, 
+                    expiry, history: [], isDone: false
+                });
+            }
+
+            await DOC_REF.set(dbData);
+            showView('view-list');
+        } catch (error) {
+            console.error("저장 실패:", error);
+            alert("저장에 실패했습니다. 이미지 용량이 너무 큰지 확인해주세요.");
         }
-        await DOC_REF.set(dbData); showView('view-list');
     };
-    if (file) { const reader = new FileReader(); reader.onload = (e) => save(e.target.result); reader.readAsDataURL(file); }
-    else { await save(null); }
+
+    // 4. 이미지 처리 및 실행 분기
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            // 파일 읽기가 완료된 시점에 DB 저장 함수 실행
+            await performSave(e.target.result);
+        };
+        reader.onerror = () => alert("이미지 파일을 읽는 중 오류가 발생했습니다.");
+        reader.readAsDataURL(file);
+    } else {
+        // 이미지가 없는 경우(편집 모드) 바로 실행
+        await performSave(null);
+    }
 };
 
 window.showAddView = () => { isEditMode = false; document.getElementById('form-title').innerText = "상품권 등록"; document.getElementById('vCategory').value = "기타"; document.getElementById('imgEditBlock').classList.add('hidden'); clearForm(); showView('view-form'); };
