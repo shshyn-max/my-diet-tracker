@@ -189,10 +189,51 @@ window.toggleHistory = (e, id) => {
     e.target.innerText = isHidden ? "내역 펼치기 ▼" : "내역 접기 ▲";
 };
 
+window.editHistory = (id, hIdx) => {
+    const v = vouchersData.find(x => x.id === id);
+    currentVoucherId = id;
+    currentHistoryIdx = hIdx;
+    
+    const h = v.history[hIdx];
+    document.getElementById('useDate').value = h.date;
+    document.getElementById('useAmount').value = h.amount;
+    
+    showView('view-detail');
+};
+
 window.openVoucherImg = (id) => {
     const v = vouchersData.find(x => x.id === id);
-    const win = window.open("");
-    win.document.write(`<img src="${v.img}" style="width:100%; height:auto;" onclick="window.close()">`);
+    const win = window.open("", "_blank");
+    
+    // 문서 작성을 시작합니다.
+    win.document.write(`
+        <html>
+        <head>
+            <title>${v.name} - 이미지 보기</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                body { 
+                    margin: 0; background: #000; 
+                    display: flex; justify-content: center; align-items: center; 
+                    min-height: 100vh; cursor: pointer; overflow: hidden;
+                }
+                img { max-width: 100%; max-height: 100vh; object-fit: contain; }
+                .close-btn {
+                    position: fixed; top: 20px; right: 20px;
+                    background: rgba(0,0,0,0.7); color: white; border: 1px solid rgba(255,255,255,0.3);
+                    padding: 12px 24px; border-radius: 30px; font-size: 16px; font-weight: bold;
+                    cursor: pointer; z-index: 100; backdrop-filter: blur(5px);
+                    -webkit-tap-highlight-color: transparent;
+                }
+            </style>
+        </head>
+        <body onclick="window.close()">
+            <button class="close-btn">닫기 ✕</button>
+            <img src="${v.img}" alt="상품권 이미지">
+        </body>
+        </html>
+    `);
+    win.document.close(); // 이 줄이 있어야 브라우저가 로딩을 완료합니다.
 };
 
 window.quickDelete = async (id) => { if(confirm("정말 삭제할까요?")) await VOUCHER_COL.doc(id).delete(); };
