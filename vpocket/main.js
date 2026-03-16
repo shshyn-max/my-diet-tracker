@@ -234,19 +234,52 @@ window.saveVoucher = async () => {
     const fileInput = document.getElementById('vImg');
     const file = fileInput.files[0];
 
-    // 1. 필수 입력값 검증
     if(!name || isNaN(total) || !expiry) {
         alert("필수 정보를 입력해주세요.");
         return;
     }
 
-    // 2. 신규 등록 시 이미지 필수 체크
     if (!isEditMode && !file) {
         alert("이미지를 선택해주세요.");
         return;
     }
 
-    // 3. 실제 DB 저장을 담당하는 내부 함수
+    // [핵심] 이미지 리사이징 함수
+    const resizeImage = (file) => {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    const MAX_SIZE = 800; // 최대 가로/세로 크기 800px로 제한
+
+                    if (width > height) {
+                        if (width > MAX_SIZE) {
+                            height *= MAX_SIZE / width;
+                            width = MAX_SIZE;
+                        }
+                    } else {
+                        if (height > MAX_SIZE) {
+                            width *= MAX_SIZE / height;
+                            height = MAX_SIZE;
+                        }
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    // 0.7 정도의 품질로 압축 (용량 대폭 감소)
+                    resolve(canvas.toDataURL('image/jpeg', 0.7));
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    };
+
     const performSave = async (imageData) => {
         try {
             if (isEditMode) {
@@ -255,7 +288,7 @@ window.saveVoucher = async () => {
                 v.category = category;
                 v.total = total;
                 v.expiry = expiry;
-                if (imageData) v.img = imageData; // 새 이미지가 있을 때만 교체
+                if (imageData) v.img = imageData;
             } else {
                 dbData.vouchers.push({
                     name, category, img: imageData, total, 
@@ -267,21 +300,15 @@ window.saveVoucher = async () => {
             showView('view-list');
         } catch (error) {
             console.error("저장 실패:", error);
-            alert("저장에 실패했습니다. 이미지 용량이 너무 큰지 확인해주세요.");
+            alert("데이터가 너무 커서 저장에 실패했습니다. (이미지 크기 확인 필요)");
         }
     };
 
-    // 4. 이미지 처리 및 실행 분기
     if (file) {
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            // 파일 읽기가 완료된 시점에 DB 저장 함수 실행
-            await performSave(e.target.result);
-        };
-        reader.onerror = () => alert("이미지 파일을 읽는 중 오류가 발생했습니다.");
-        reader.readAsDataURL(file);
+        // 이미지를 압축한 후 저장 실행
+        const resizedData = await resizeImage(file);
+        await performSave(resizedData);
     } else {
-        // 이미지가 없는 경우(편집 모드) 바로 실행
         await performSave(null);
     }
 };
