@@ -31,7 +31,7 @@ h3 { color: var(--text-light); letter-spacing: -0.5px; margin-top: 0; }
 label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.85rem; color: var(--sub-text); }
 
 input, select {
-    width: 100%; padding: 14px; margin-bottom: 15px; border-radius: 12px; border: 1px solid var(--border);
+    width: 100%; max-width: 100%; padding: 14px; margin-bottom: 15px; border-radius: 12px; border: 1px solid var(--border);
     box-sizing: border-box; background-color: var(--input-bg); color: var(--text-light); font-size: 1rem; color-scheme: dark;
 }
 
