@@ -17,10 +17,18 @@ let currentHistoryIdx = null;
 let isEditMode = false;
 
 function init() {
-    VOUCHER_COL.orderBy("createdAt", "desc").onSnapshot((snap) => {
-        vouchersData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    // 1. orderBy를 코드 내부 sort로 대체하여 필드 부재로 인한 데이터 누락 방지
+    VOUCHER_COL.onSnapshot((snap) => {
+        vouchersData = snap.docs.map(doc => ({ 
+            id: doc.id, 
+            ...doc.data() 
+        }));
+        
+        // 2. 데이터가 갱신될 때마다 두 화면을 모두 다시 그립니다.
         renderList();
-        if(!document.getElementById('view-archive').classList.contains('hidden')) renderArchive();
+        renderArchive(); 
+    }, (error) => {
+        console.error("데이터 로드 실패:", error);
     });
 }
 
@@ -41,8 +49,22 @@ function renderList() {
 
 function renderArchive() {
     const container = document.getElementById('archive-container');
-    const done = vouchersData.filter(v => v.isDone).sort((a,b) => new Date(a.expiry) - new Date(b.expiry));
-    container.innerHTML = done.length ? done.map(v => generateCardHtml(v, true)).join('') : `<p style="text-align:center; color:var(--sub-text); margin-top:40px;">완료된 내역이 없습니다.</p>`;
+    // isDone이 true인 항목만 필터링
+    const done = vouchersData.filter(v => v.isDone === true);
+    
+    if (done.length === 0) {
+        container.innerHTML = `<p style="text-align:center; color:var(--sub-text); margin-top:40px;">완료된 내역이 없습니다.</p>`;
+        return;
+    }
+
+    // 유효기간순으로 정렬 (안전한 비교 방식)
+    const sorted = done.sort((a, b) => {
+        const dateA = a.expiry ? new Date(a.expiry) : 0;
+        const dateB = b.expiry ? new Date(b.expiry) : 0;
+        return dateA - dateB;
+    });
+
+    container.innerHTML = sorted.map(v => generateCardHtml(v, true)).join('');
 }
 
 function generateCardHtml(v, isArchive) {
