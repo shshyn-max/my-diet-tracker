@@ -1,15 +1,12 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
 const firebaseConfig = {
     apiKey: "AIzaSyAlMx_uSh9FuB1gbZj3DzB1u1qX6kKnSuw", authDomain: "voucher-pocket.firebaseapp.com",
     projectId: "voucher-pocket", storageBucket: "voucher-pocket.firebasestorage.app",
     messagingSenderId: "789053008764", appId: "1:789053008764:web:49070106255927785f92f9"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const DOC_REF = doc(db, "vouchers", "v3_data"); 
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const DOC_REF = db.collection("vouchers").doc("v3_data"); 
 
 let dbData = { vouchers: [] };
 let currentVoucherIdx = null;
@@ -23,10 +20,17 @@ window.showView = (viewId) => {
     if(viewId === 'view-archive') renderArchive();
 };
 
-async function init() {
-    const snap = await getDoc(DOC_REF);
-    if (snap.exists()) dbData = snap.data();
-    renderList();
+function init() {
+    DOC_REF.onSnapshot((snap) => {
+        if (snap.exists) {
+            dbData = snap.data();
+            renderList();
+        } else {
+            // 문서가 없을 경우 초기화 대비
+            dbData = { vouchers: [] };
+            renderList();
+        }
+    });
 }
 
 function renderList() {
@@ -121,13 +125,13 @@ function generateCardHtml(v, isArchive) {
 window.markAsDone = async (idx) => {
     if(!confirm("이 상품권을 사용완료 처리할까요?")) return;
     dbData.vouchers[idx].isDone = true;
-    await setDoc(DOC_REF, dbData);
+    await DOC_REF.set(dbData);
     renderList();
 };
 
 window.markAsActive = async (idx) => {
     dbData.vouchers[idx].isDone = false;
-    await setDoc(DOC_REF, dbData);
+    await DOC_REF.set(dbData);
     renderArchive();
 };
 
@@ -158,7 +162,7 @@ window.deleteHistory = async (vIdx, hIdx) => {
     if(!confirm("이 사용 내역을 삭제할까요?")) return;
     localStorage.setItem('expandedVoucherId', vIdx);
     dbData.vouchers[vIdx].history.splice(hIdx, 1);
-    await setDoc(DOC_REF, dbData);
+    await DOC_REF.set(dbData);
     dbData.vouchers[vIdx].isDone ? renderArchive() : renderList();
 };
 
@@ -196,7 +200,7 @@ window.quickEdit = (idx) => {
 
 window.quickDelete = async (idx) => {
     if(!confirm("이 상품권을 영구 삭제할까요?")) return;
-    dbData.vouchers.splice(idx, 1); await setDoc(DOC_REF, dbData); 
+    dbData.vouchers.splice(idx, 1); await DOC_REF.set(dbData); 
     renderList(); renderArchive();
 };
 
@@ -210,7 +214,7 @@ window.showDetail = (idx) => {
     showView('view-detail');
 };
 
-document.getElementById('btnAddHistory').onclick = async () => {
+window.addHistory = async () => {
     const date = document.getElementById('useDate').value;
     const amount = parseInt(document.getElementById('useAmount').value);
     if(!date || isNaN(amount)) return alert("날짜와 금액을 입력해 주세요.");
@@ -218,11 +222,11 @@ document.getElementById('btnAddHistory').onclick = async () => {
     if (currentHistoryIdx !== null) history[currentHistoryIdx] = { date, amount };
     else history.push({ date, amount });
     dbData.vouchers[currentVoucherIdx].history = history;
-    await setDoc(DOC_REF, dbData); currentHistoryIdx = null;
+    await DOC_REF.set(dbData); currentHistoryIdx = null;
     dbData.vouchers[currentVoucherIdx].isDone ? showView('view-archive') : showView('view-list');
 };
 
-document.getElementById('btnSaveVoucher').onclick = async () => {
+window.saveVoucher = async () => {
     const name = document.getElementById('vName').value;
     const category = document.getElementById('vCategory').value;
     const total = parseInt(document.getElementById('vTotal').value);
@@ -237,7 +241,7 @@ document.getElementById('btnSaveVoucher').onclick = async () => {
             if(!img) return alert("이미지를 선택해주세요.");
             dbData.vouchers.push({ name, category, img, total, expiry, history: [], isDone: false });
         }
-        await setDoc(DOC_REF, dbData); showView('view-list');
+        await DOC_REF.set(dbData); showView('view-list');
     };
     if (file) { const reader = new FileReader(); reader.onload = (e) => save(e.target.result); reader.readAsDataURL(file); }
     else { await save(null); }
